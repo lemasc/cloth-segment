@@ -10,3 +10,12 @@ wheels/
 .venv
 
 datasets
+
+# Shared-mount symlinks (scripts/setup_links.sh)
+/data
+/runs
+
+# Tooling
+.pytest_cache/
+.ipynb_checkpoints/
+__marimo__/

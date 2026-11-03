@@ -12,6 +12,7 @@ dependencies = [
     "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pillow>=13.0.0",
+    "pyyaml>=6.0.3",
     "scipy>=1.18.1",
     "seaborn>=0.13.2",
     "torch==2.14.1",
@@ -45,3 +46,9 @@ explicit = true
 name = "pytorch-cu126"
 url = "https://download.pytorch.org/whl/cu126"
 explicit = true
+
+[dependency-groups]
+dev = [
+    "marimo>=0.25.2",
+    "pytest>=9.2.0",
+]

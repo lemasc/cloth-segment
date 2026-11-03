@@ -1,0 +1,13 @@
+# Shared defaults. Experiment configs override these.
+# Every resolved field is part of the run hash (D7), so keep it explicit.
+# Values are placeholders until T4/T5.
+seed: 0
+
+data:
+  version: null        # set by T2/T3 data preparation
+  datasets: [lip, cihp, dfmm]
+
+model:
+  name: null           # unet_r34 | deeplabv3p_r50 | segformer_b2
+
+train: {}
