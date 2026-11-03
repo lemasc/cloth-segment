@@ -156,30 +156,20 @@ def _(mo, raw):
 @app.cell
 def _(mo):
     mo.md("""
-    ## 4. Draft shared label set
+    ## 4. Shared label set
 
-    The kickoff draft with the T1 changes (DFMM leggings -> footwear, belt -> ignore), applied to the pixel counts.
-    This is a **draft for T1 only**; T2 moves the final mapping into
-    `cloth_segment.data.labels` with tests.
+    The final mapping from `cloth_segment.data.labels` (T2), applied to the
+    raw pixel counts.
     """)
     return
 
 
 @app.cell
 def _():
-    SHARED = ["background", "hair", "face", "skin", "upper", "outer", "dress",
-              "skirt", "pants", "footwear", "headwear", "accessory"]
-    IGNORE = 255
-    _lc = {0: 0, 2: 1, 13: 2, 14: 3, 15: 3, 16: 3, 17: 3, 5: 4, 7: 5, 6: 6,
-           12: 7, 9: 8, 8: 9, 18: 9, 19: 9, 1: 10, 3: 11, 4: 11, 11: 11}
-    DRAFT_MAP = {
-        "lip": {**_lc, 10: 6},   # jumpsuits -> dress/one-piece
-        "cihp": {**_lc, 10: 3},  # torso-skin -> skin
-        "dfmm": {0: 0, 13: 1, 14: 2, 15: 3, 1: 4, 2: 5, 4: 6, 21: 6, 3: 7,
-                 5: 8, 6: 9, 11: 9, 18: 9, 7: 10, 8: 11, 9: 11, 19: 11,  # 6 leggings = stockings
-                 23: 11, 10: IGNORE, 12: IGNORE,  # belt, bag: no LIP/CIHP class
-                 16: IGNORE, 17: IGNORE, 20: IGNORE, 22: IGNORE},
-    }
+    from cloth_segment.data.labels import IGNORE, MAPPING, SHARED_CLASSES
+
+    SHARED = list(SHARED_CLASSES)
+    DRAFT_MAP = MAPPING
     return DRAFT_MAP, IGNORE, SHARED
 
 
