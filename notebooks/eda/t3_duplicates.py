@@ -204,31 +204,40 @@ def _(accepted, pairs, v_kind, v_n, v_order, v_range, v_rel, v_seed):
 
 
 @app.cell
-def _(DATASETS, Image, manifest, mo, plt, selected, shown):
-    def _load(row, flip):
+def _(DATASETS, Image, manifest, mo, selected, shown):
+    import base64 as _b64
+    import html as _html
+    import io as _io
+
+    def _thumb(row, flip):
+        # Small JPEG data URIs keep the cell output well under marimo's size limit.
         with Image.open(DATASETS / manifest.image.iloc[row]) as im:
             im = im.convert("RGB")
-            im.thumbnail((320, 320))
-            return im.transpose(Image.Transpose.FLIP_LEFT_RIGHT) if flip else im
+            im.thumbnail((220, 220))
+            if flip:
+                im = im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+            buf = _io.BytesIO()
+            im.save(buf, "JPEG", quality=80)
+        return "data:image/jpeg;base64," + _b64.b64encode(buf.getvalue()).decode()
+
+    def _card(r):
+        colour = "#c0392b" if r.dup else "#555"
+        mark = "✓ dup" if r.dup else "✗ kept"
+        head = f"{mark} · r={r['corr']:.3f} · d={r.hash_dist}" + (" · mirrored" if r.flip else "")
+        img = ('<img src="{}" style="max-width:220px;max-height:220px;display:block;margin:2px auto">')
+        cap = '<div style="font-size:11px;word-break:break-all">{}</div>'
+        return (f'<div style="border:2px solid {colour};border-radius:6px;padding:6px;width:236px">'
+                f'<div style="font-size:12px;font-weight:600;color:{colour}">{head}</div>'
+                + img.format(_thumb(r.a, False)) + cap.format(_html.escape(r.name_a))
+                + img.format(_thumb(r.b, bool(r.flip))) + cap.format(_html.escape(r.name_b))
+                + "</div>")
 
     if len(shown) == 0:
         _out = mo.md(f"No pairs in this range ({len(selected)} match the filters).")
     else:
-        _cols = 6
-        _rows = -(-len(shown) // _cols)
-        _fig, _axes = plt.subplots(2 * _rows, _cols, figsize=(3.0 * _cols, 5.6 * _rows), squeeze=False)
-        for _ax in _axes.ravel():
-            _ax.axis("off")
-        for _k, (_, _r) in enumerate(shown.iterrows()):
-            _y, _x = 2 * (_k // _cols), _k % _cols
-            _axes[_y, _x].imshow(_load(_r.a, False))
-            _axes[_y + 1, _x].imshow(_load(_r.b, bool(_r.flip)))
-            _mark = "✓ dup" if _r.dup else "✗ kept"
-            _axes[_y, _x].set_title(f"{_mark}  r={_r['corr']:.3f}  d={_r.hash_dist}{'  mirrored' if _r.flip else ''}\n"
-                                    f"{_r.name_a[-34:]}", fontsize=7, color="C3" if _r.dup else "k")
-            _axes[_y + 1, _x].set_title(_r.name_b[-34:], fontsize=7)
-        _fig.tight_layout()
-        _out = mo.vstack([mo.md(f"{len(selected)} pairs match; showing {len(shown)}."), _fig])
+        _grid = ('<div style="display:flex;flex-wrap:wrap;gap:10px">'
+                 + "".join(_card(r) for _, r in shown.iterrows()) + "</div>")
+        _out = mo.vstack([mo.md(f"{len(selected)} pairs match; showing {len(shown)}."), mo.Html(_grid)])
     _out
     return
 
