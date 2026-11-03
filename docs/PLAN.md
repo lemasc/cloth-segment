@@ -44,7 +44,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 
 | ID | Task | Status |
 |---|---|---|
-| T1 | EDA of LIP, CIHP, DFMM (sizes, class distribution, samples, label conflicts) | doing |
+| T1 | EDA of LIP, CIHP, DFMM (sizes, class distribution, samples, label conflicts) | done |
 | T2 | Shared label set and per-dataset converters | todo |
 | T3 | Splits and manifest (group split for DFMM, duplicate check across datasets) | todo |
 | T4 | Data loader (segmentation + DFMM attributes) and augmentation | todo |
