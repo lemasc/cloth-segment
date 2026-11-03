@@ -29,7 +29,7 @@ multi-task = 4 pts, see E1).
 | D1 | Train on LIP + CIHP + DFMM, all mapped to one shared label set. |
 | D2 | ATR excluded for now (no coat/outer class, which conflicts with the shared set). |
 | D3 | The data loader also loads DFMM attribute labels from the start, so multi-task (E1) needs no loader rework. |
-| D4 | Official LIP/CIHP val sets serve as test sets (official test labels are unavailable). DFMM is split by outfit ID to prevent leakage. |
+| D4 | Official LIP/CIHP val sets serve as test sets (official test labels are unavailable). DFMM is split by outfit ID to prevent leakage. Train images that share a source photo or are near-duplicates of a test image are dropped; the test sets are not changed. |
 | D5 | Fair comparison: same data, splits, input resolution, augmentation, iteration budget and pretrained (ImageNet) encoders across all models. |
 | D6 | Python source for library, training and evaluation; one YAML config per experiment. Marimo for EDA; Jupyter (outputs committed) for analysis. Long runs are launched from a terminal, not a notebook kernel. |
 | D7 | Runs live on the shared mount, one folder each, named `<datetime>-<commit>-<slug>` and set at run start. The resolved config hash (+ data version) in `meta.json` is the cache key: a finished run with the same hash is never retrained. |
@@ -46,7 +46,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 |---|---|---|
 | T1 | EDA of LIP, CIHP, DFMM (sizes, class distribution, samples, label conflicts) | done |
 | T2 | Shared label set and per-dataset converters | done |
-| T3 | Splits and manifest (group split for DFMM, duplicate check across datasets) | doing |
+| T3 | Splits and manifest (group split for DFMM, duplicate check across datasets) | done |
 | T4 | Data loader (segmentation + DFMM attributes) and augmentation | todo |
 | T5 | Training and evaluation pipeline (config-driven, shared by all models) | todo |
 | T6 | Model A: U-Net (ResNet-34) | todo |
