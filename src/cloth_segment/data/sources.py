@@ -99,3 +99,54 @@ def dfmm_outfit_id(stem: str) -> str:
         if part.startswith("id_"):
             return part
     raise ValueError(f"no outfit id in {stem!r}")
+
+
+# DFMM attribute columns -> value names (from the dataset README). The last
+# value of each is "NA" (part not visible / not present).
+DFMM_SHAPE_ATTRS: dict[str, tuple[str, ...]] = {
+    "sleeve": ("sleeveless", "short", "medium", "long", "not_long", "NA"),
+    "lower_length": ("three_point", "medium_short", "three_quarter", "long", "NA"),
+    "socks": ("no", "socks", "leggings", "NA"),
+    "hat": ("no", "yes", "NA"),
+    "glasses": ("no", "eyeglasses", "sunglasses", "in_hand_or_clothes", "NA"),
+    "neckwear": ("no", "yes", "NA"),
+    "wrist": ("no", "yes", "NA"),
+    "ring": ("no", "yes", "NA"),
+    "waist_acc": ("no", "belt", "clothing", "hidden", "NA"),
+    "neckline": ("v", "square", "round", "standing", "lapel", "suspenders", "NA"),
+    "outer_cardigan": ("yes", "no", "NA"),
+    "covers_navel": ("no", "yes", "NA"),
+}
+_FABRIC = ("denim", "cotton", "leather", "furry", "knitted", "chiffon", "other", "NA")
+_PATTERN = ("floral", "graphic", "striped", "pure", "lattice", "other", "color_block", "NA")
+DFMM_TEXTURE_ATTRS: dict[str, tuple[str, ...]] = {
+    f"{kind}_{part}": names
+    for kind, names in (("fabric", _FABRIC), ("pattern", _PATTERN))
+    for part in ("upper", "lower", "outer")
+}
+DFMM_ATTRS = {**DFMM_SHAPE_ATTRS, **DFMM_TEXTURE_ATTRS}
+MISSING_ATTR = -1  # image has no annotation line for this attribute file
+
+
+def load_dfmm_attributes():
+    """Raw DFMM attribute codes, one row per image id (stem), MISSING_ATTR where absent."""
+    import pandas as pd
+
+    root = dataset_root("dfmm") / "labels"
+
+    def read(path, cols):
+        df = pd.read_csv(path, sep=r"\s+", header=None, names=["file", *cols])
+        if df.file.duplicated().any():
+            raise ValueError(f"{path}: duplicate image names")
+        return df.assign(id=df.file.str.removesuffix(".jpg")).drop(columns="file").set_index("id")
+
+    out = read(root / "shape/shape_anno_all.txt", list(DFMM_SHAPE_ATTRS))
+    for kind in ("fabric", "pattern"):
+        out = out.join(read(root / f"texture/{kind}_ann.txt", [f"{kind}_{p}" for p in ("upper", "lower", "outer")]),
+                       how="outer")
+    out = out[list(DFMM_ATTRS)].fillna(MISSING_ATTR).astype(int)
+    for col, names in DFMM_ATTRS.items():
+        bad = ~out[col].between(MISSING_ATTR, len(names) - 1)
+        if bad.any():
+            raise ValueError(f"{col}: values outside 0..{len(names) - 1}: {sorted(out.loc[bad, col].unique())}")
+    return out
