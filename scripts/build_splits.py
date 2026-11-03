@@ -25,13 +25,10 @@ import hashlib
 import json
 import os
 import shutil
-from concurrent.futures import ProcessPoolExecutor
-
-import numpy as np
 import pandas as pd
 
 from cloth_segment.data import splits as S
-from cloth_segment.data.dedup import hash_file, near_pairs, thumb_corr, thumbnail, to_u64
+from cloth_segment.data.dedup import score_candidates
 from cloth_segment.data.labels import IGNORE, LABEL_VERSION, NUM_CLASSES, label_hash
 from cloth_segment.data.sources import (
     DFMM_ATTRS, MISSING_ATTR, SPLITS, list_pairs, load_dfmm_attributes,
@@ -43,34 +40,10 @@ OUT = DATA / "splits" / S.SPLIT_VERSION
 COUNT_COLS = [f"c{i}" for i in range(NUM_CLASSES)] + [f"c{IGNORE}"]
 
 
-def _hash_and_thumb(path):
-    h, hf = hash_file(path)
-    return h, hf, thumbnail(path)
-
-
 def find_duplicates(df: pd.DataFrame, paths: list, workers: int) -> pd.DataFrame:
-    with ProcessPoolExecutor(workers) as ex:
-        res = list(ex.map(_hash_and_thumb, paths, chunksize=128))
-    h = to_u64(np.stack([r[0] for r in res]))
-    hf = to_u64(np.stack([r[1] for r in res]))
-    thumbs = np.stack([r[2] for r in res])
-    print(f"  hashed {len(h)} images", flush=True)
-
-    plain = near_pairs(h, max_dist=S.HASH_MAX_DIST)
-    flip = near_pairs(h, hf, max_dist=S.HASH_MAX_DIST)
-    flip = flip[flip[:, 0] != flip[:, 1]]
-    cand = pd.concat([
-        pd.DataFrame({"a": plain[:, 0], "b": plain[:, 1], "hash_dist": plain[:, 2], "flip": False}),
-        pd.DataFrame({"a": flip[:, :2].min(1), "b": flip[:, :2].max(1), "hash_dist": flip[:, 2], "flip": True}),
-    ], ignore_index=True)
-    a, b = cand.a.to_numpy(), cand.b.to_numpy()
-    tb = thumbs[b]
-    tb = np.where(cand.flip.to_numpy()[:, None, None], tb[:, :, ::-1], tb)
-    cand["corr"] = thumb_corr(thumbs[a], tb)
-    cand = cand.sort_values("corr", ascending=False).drop_duplicates(["a", "b"])
+    cand = score_candidates(paths, S.HASH_MAX_DIST, workers)
     ds = df.dataset.to_numpy()
-    keep = [S.is_duplicate(ds[i], ds[j], c) for i, j, c in zip(cand.a, cand.b, cand["corr"])]
-    dup = cand[keep].reset_index(drop=True)
+    dup = cand[S.duplicate_mask(ds[cand.a], ds[cand.b], cand["corr"].to_numpy())].reset_index(drop=True)
     print(f"  {len(cand)} hash candidates -> {len(dup)} duplicates", flush=True)
     for side in ("a", "b"):
         for col in ("dataset", "source_split", "id"):
@@ -99,16 +72,7 @@ def build(workers: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         raise SystemExit("some pairs have no entry in masks stats.csv")
 
     dup = find_duplicates(df, [p.image for p in pairs], workers)
-    uf = S.UnionFind()
-    base = [S.group_key(d, i) for d, i in zip(df.dataset, df.id)]
-    for g in base:
-        uf.find(g)
-    for i, j in zip(dup.a, dup.b):
-        uf.union(base[i], base[j])
-    df["group"] = [uf.find(g) for g in base]
-
-    empty = (df[[f"c{i}" for i in range(1, NUM_CLASSES)]].sum(axis=1) == 0).to_numpy()
-    df["split"], df["exclude_reason"] = S.assign(list(df.dataset), list(df.source_split), list(df.group), empty)
+    df["group"], df["split"], df["exclude_reason"] = S.apply_rules(df, dup.a, dup.b)
 
     attrs = load_dfmm_attributes()
     df = df.join(attrs, on="id")

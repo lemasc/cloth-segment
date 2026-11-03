@@ -67,3 +67,37 @@ def thumb_corr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
         x = x.reshape(len(x), -1).astype(np.float32)
         return (x - x.mean(1, keepdims=True)) / (x.std(1, keepdims=True) + 1e-3)
     return (norm(a) * norm(b)).mean(1)
+
+
+def _hash_and_thumb(path: Path):
+    h, hf = hash_file(path)
+    return h, hf, thumbnail(path)
+
+
+def score_candidates(paths: list[Path], max_dist: int, workers: int = 16):
+    """All near-duplicate candidates among `paths`, scored by thumbnail correlation.
+
+    Returns a DataFrame (a, b, hash_dist, flip, corr) with a < b as row
+    indices into `paths`, one row per pair (the better of plain/mirrored).
+    """
+    from concurrent.futures import ProcessPoolExecutor
+
+    import pandas as pd
+
+    with ProcessPoolExecutor(workers) as ex:
+        res = list(ex.map(_hash_and_thumb, paths, chunksize=128))
+    h = to_u64(np.stack([r[0] for r in res]))
+    hf = to_u64(np.stack([r[1] for r in res]))
+    thumbs = np.stack([r[2] for r in res])
+
+    plain = near_pairs(h, max_dist=max_dist)
+    flip = near_pairs(h, hf, max_dist=max_dist)
+    flip = flip[flip[:, 0] != flip[:, 1]]
+    cand = pd.concat([
+        pd.DataFrame({"a": plain[:, 0], "b": plain[:, 1], "hash_dist": plain[:, 2], "flip": False}),
+        pd.DataFrame({"a": flip[:, :2].min(1), "b": flip[:, :2].max(1), "hash_dist": flip[:, 2], "flip": True}),
+    ], ignore_index=True)
+    tb = thumbs[cand.b.to_numpy()]
+    tb = np.where(cand.flip.to_numpy()[:, None, None], tb[:, :, ::-1], tb)
+    cand["corr"] = thumb_corr(thumbs[cand.a.to_numpy()], tb)
+    return cand.sort_values("corr", ascending=False).drop_duplicates(["a", "b"]).reset_index(drop=True)

@@ -48,9 +48,17 @@ def group_key(dataset: str, id_: str) -> str:
     raise ValueError(dataset)
 
 
-def is_duplicate(ds_a: str, ds_b: str, corr: float) -> bool:
-    limit = CORR_MIN_DFMM_PAIR if "dfmm" in (ds_a, ds_b) else CORR_MIN
+def is_duplicate(ds_a: str, ds_b: str, corr: float,
+                 corr_min: float = CORR_MIN, corr_min_dfmm: float = CORR_MIN_DFMM_PAIR) -> bool:
+    limit = corr_min_dfmm if "dfmm" in (ds_a, ds_b) else corr_min
     return corr >= limit
+
+
+def duplicate_mask(ds_a: np.ndarray, ds_b: np.ndarray, corr: np.ndarray,
+                   corr_min: float = CORR_MIN, corr_min_dfmm: float = CORR_MIN_DFMM_PAIR) -> np.ndarray:
+    """Vectorised is_duplicate over candidate pairs."""
+    involves_dfmm = (ds_a == "dfmm") | (ds_b == "dfmm")
+    return corr >= np.where(involves_dfmm, corr_min_dfmm, corr_min)
 
 
 class UnionFind:
@@ -99,6 +107,25 @@ def assign(datasets: list[str], source_splits: list[str], groups: list[str],
         if empty[i] and split[i] != "excluded":
             split[i], reason[i] = "excluded", "empty_mask"
     return split, reason
+
+
+def apply_rules(df, dup_a, dup_b, seed: int = SEED):
+    """(group, split, exclude_reason) lists for manifest rows, given duplicate pairs.
+
+    `df` needs dataset, source_split, id and c1..c11 (for empty masks);
+    `dup_a`/`dup_b` are row positions of accepted duplicate pairs.
+    """
+    uf = UnionFind()
+    base = [group_key(d, i) for d, i in zip(df.dataset, df.id)]
+    for g in base:
+        uf.find(g)
+    for i, j in zip(dup_a, dup_b):
+        uf.union(base[i], base[j])
+    groups = [uf.find(g) for g in base]
+    fg = [c for c in df.columns if c.startswith("c") and c[1:].isdigit() and c not in ("c0", "c255")]
+    empty = (df[fg].sum(axis=1) == 0).to_numpy()
+    split, reason = assign(list(df.dataset), list(df.source_split), groups, empty, seed)
+    return groups, split, reason
 
 
 def load_manifest(version: str = SPLIT_VERSION):
