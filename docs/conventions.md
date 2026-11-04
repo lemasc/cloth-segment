@@ -30,7 +30,8 @@ the surrounding code.
   differs. A model's config must not change the shared fields (D5).
 - Run folder: `<datetime>-<commit>-<slug>` (D7). Never edit a finished run.
 - Anything that changes the run hash is an experiment; anything that changes the
-  dataset or evaluation protocol is a versioned, frozen change (D8).
+  dataset or evaluation protocol is a versioned shared-contract change (D8;
+  see CONTRIBUTING section 4 for open vs frozen).
 
 ## Notebooks
 

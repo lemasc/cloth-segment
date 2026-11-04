@@ -39,7 +39,7 @@ docs/          PLAN.md, handoffs/, reports/
 
 ## Working conventions
 
-Full rules: [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, review, frozen areas),
+Full rules: [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, review, shared contracts),
 [`docs/conventions.md`](docs/conventions.md) (code), [`AGENTS.md`](AGENTS.md) (coding agents).
 
 - Commit before launching any run you might keep (the run name includes the commit).

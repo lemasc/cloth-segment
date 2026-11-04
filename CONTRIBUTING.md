@@ -54,20 +54,33 @@ A PR is ready when:
 - checks pass and new logic has tests (see conventions);
 - any experiment has its YAML config committed (D6);
 - README / docs are updated where behaviour changed;
-- nothing frozen was touched without saying so (section 4).
+- any shared contract you touched is declared in the PR (section 4).
 
-## 4. Frozen areas and decisions
+## 4. Shared contracts and freezing
 
-These define the experiment, so changing them silently invalidates results:
+Some parts define the experiment itself, so changing them silently
+invalidates results. We call them **shared contracts**. Each has a status,
+set only by the maintainer in this table:
 
-- label set, converters, splits and manifest (`src/cloth_segment/data/`
-  labels, splits, dedup; `scripts/build_splits.py`, `prepare_masks.py`);
-- the evaluation protocol (`evaluate.py`, metrics);
-- the shared fields of the model comparison (D5): data, splits, input
-  resolution, augmentation, iteration budget, pretrained encoders.
+| Contract | Where | Status | Freeze when |
+|---|---|---|---|
+| Label set and converters | `data/labels.py`, `prepare_masks.py` | open | T4 loader merged and reviewed |
+| Splits and manifest | `data/splits.py`, `dedup.py`, `build_splits.py` | open | T4 merged; duplicate thresholds reviewed |
+| Evaluation protocol and metrics | `evaluate.py` | open | T5 merged; metrics tested |
+| Shared comparison fields (D5) | `configs/base.yaml` | open | T5 merged; first baseline run agreed |
 
-A change here needs its own PR, labelled `frozen-change`, with the reason and a
-version bump (D7/D8). Never alter the protocol or test sets to improve a number.
+**While a contract is `open`:** changes are allowed through a normal PR, but the
+PR must (a) tick the shared-contract box in the template, (b) say what other
+tasks or results it affects, and (c) bump the version where one exists (e.g.
+`SPLIT_VERSION`) so nothing silently reuses stale data. Tell the team when one
+merges. Do not start long training runs on an open contract you expect to
+change.
+
+**Once a contract is `frozen`:** the maintainer edits its row to `frozen`.
+From then on a change needs its own PR labelled `frozen-change`, with the
+reason and a version bump (D7/D8), and the results that depended on it are
+re-run or marked stale. Never alter the protocol or test sets to improve a
+number, frozen or not.
 
 Changing a decision (a D row) or the scope table is the maintainer's call. Open
 an issue or a PR that proposes it; do not just edit the row.

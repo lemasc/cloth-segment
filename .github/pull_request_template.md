@@ -14,10 +14,11 @@
 - [ ] Handoff note added in `docs/handoffs/`
 - [ ] `PLAN.md` status updated (own task only)
 
-## Frozen areas
+## Shared contracts
 
 - [ ] Not touched
-- [ ] Touched (label `frozen-change`; reason and version bump described)
+- [ ] Touched while `open`: affected tasks/results and version bump described
+- [ ] Touched while `frozen`: label `frozen-change`, reason and re-run plan described
 
 ## Results (if any)
 

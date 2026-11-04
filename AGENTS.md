@@ -20,9 +20,11 @@ uv run python -m cloth_segment.train configs/<experiment>.yaml
 
 - Never push to or commit on `main`. Work on a branch `<task-id>/<slug>`.
 - Never use `--no-verify` or force-push.
-- Do not change frozen areas (label set, converters, splits/manifest, eval
-  protocol, shared comparison fields: see CONTRIBUTING section 4) unless the
-  task is explicitly a `frozen-change`.
+- Shared contracts (label set, converters, splits/manifest, eval protocol,
+  shared comparison fields) are listed in CONTRIBUTING section 4 with a status.
+  Do not change one unless your task requires it; if you do, declare it in the
+  PR, bump its version, and list what it affects. If its status is `frozen`,
+  do not change it at all unless the task is an explicit `frozen-change`.
 - Do not edit D-rows or the scope table in `PLAN.md`. You may set your own
   task's status and nothing else in that table.
 - Do not write to `datasets/`, `data/` or `runs/` (shared mount) except through
