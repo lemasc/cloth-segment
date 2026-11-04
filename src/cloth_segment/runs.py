@@ -3,8 +3,10 @@
 - Config = `configs/base.yaml` deep-merged with one experiment YAML. The
   experiment may not change shared comparison fields (D5) unless it lists
   them under `run.overrides_shared` (e.g. E2 changes `data.datasets`).
+  `optim.lr` is deliberately not shared: each model may set its own.
 - `config_hash` = sha256 of the resolved config as canonical JSON, without the
-  `run` section (slug, notes: names, not experiment settings). It includes
+  `run` section (slug, notes, workers, logging: names and runtime settings
+  that do not change results). It includes
   `data.version`, so the data version is part of the key.
 - Run folder: `<YYYYMMDD-HHMM>-<shortcommit>[-dirty]-<slug>`, set at start,
   holding `config.yaml` (resolved) and `meta.json`.
@@ -41,6 +43,14 @@ SHARED_FIELDS: tuple[str, ...] = (
     "augment",
     "train.batch_size",
     "train.iters",
+    "train.amp",
+    "optim.name",
+    "optim.weight_decay",
+    "optim.betas",
+    "optim.warmup_iters",
+    "optim.poly_power",
+    "loss",
+    "eval",
 )
 NOT_HASHED = ("run",)
 LOCK_NAME = ".gpu.lock"

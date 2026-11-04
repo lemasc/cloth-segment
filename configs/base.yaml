@@ -26,3 +26,24 @@ model:
 train:                 # shared comparison fields (D5): same for every model
   batch_size: 8        # largest that fits SegFormer-B2 at 512 on the 12 GB GPU (T5 probe)
   iters: 40000         # optimizer steps, about 5 epochs of the 62,500 train images
+  amp: bf16            # bf16 | fp16 | none; the T5 probe measured batch 8 with AMP on
+
+optim:                 # AdamW for every model (D5); lr may be set per model (not shared)
+  name: adamw
+  lr: 1.0e-4           # untuned default (the probe used it); model configs may override
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  warmup_iters: 1500   # linear warmup from lr/warmup_iters to lr
+  poly_power: 1.0      # then lr * (1 - progress) ** power down to 0 at train.iters
+
+loss:
+  name: ce             # cross-entropy, IGNORE pixels skipped; E3 compares ce + dice
+
+eval:                  # validation during training (internal val split, never test, D4)
+  split: val
+  every: 4000          # iterations; also always at the last iteration
+  select: miou         # checkpoint kept as best.pt = highest val mIoU (eval-v1)
+
+run:                   # not hashed: names and runtime settings that do not change results
+  num_workers: 8       # T4 loader: ~256 img/s at 8 workers
+  log_every: 50        # iterations between train-loss log lines
