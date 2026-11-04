@@ -9,12 +9,20 @@ Coding details are in [`docs/conventions.md`](docs/conventions.md).
 ```bash
 uv sync
 uv run pre-commit install        # once per clone: ruff + notebook + safety hooks
-scripts/setup_links.sh           # datasets/, data/, runs/ -> shared mount
 uv run pytest
 ```
 
-Never copy datasets, checkpoints or run outputs into the repo. They live on the
-shared mount (D9) and are gitignored.
+Then point `datasets/`, `data/` and `runs/` at storage with enough space. They
+are gitignored and the code only uses these three paths, so either works:
+
+- **Shared storage** (e.g. the team machine): `scripts/setup_links.sh [ROOT]`
+  symlinks them to a shared root.
+- **Your own machine**: create the three folders in the clone, or symlink them
+  to a disk of your choice. Datasets and their sources are described in
+  `docs/handoffs/2026-11-03-kickoff.md` (a proper data-sources section comes
+  with T11).
+
+Never commit datasets, checkpoints or run outputs.
 
 ## 2. Workflow
 
@@ -35,8 +43,8 @@ shared mount (D9) and are gitignored.
 6. **Finish.** After merge: set the task to `done` in `PLAN.md` (own small
    `plan:` commit) and add a handoff note (section 5).
 
-Each member works in their own clone (D9). Do not edit files in someone else's
-clone or in the shared mount by hand.
+Each member works in their own clone. Do not edit files in someone else's
+clone, or in shared storage by hand.
 
 ## 3. Before you open a PR
 
@@ -92,17 +100,22 @@ When you finish a task (or stop mid-way), add
 [`docs/handoffs/TEMPLATE.md`](docs/handoffs/TEMPLATE.md). Put findings, results,
 gotchas and open questions there, not in `PLAN.md`.
 
-## 6. Experiments and the shared machine
+## 6. Experiments and hardware
 
 - One YAML config per experiment. The resolved config hash is the cache key
   (D7): never retrain a finished run with the same hash, never edit a finished
   run's folder.
 - Commit before launching any run you may keep; the run name includes the
   commit.
-- Only one GPU. Take the GPU lock (see `runs.py`) and release it when done. Do
-  not hold it idle.
-- Launch long runs from a terminal (`tmux`), not a notebook kernel (D6).
-- Do not delete other members' runs or data. Clean up only your own.
+- Launch long runs from a terminal (`tmux` or similar), not a notebook kernel
+  (D6).
+- **If the GPU is shared** (the team machine): take the GPU lock (see
+  `runs.py`), release it when done, and do not hold it idle. Do not delete
+  other members' runs or data; clean up only your own.
+- **If you use your own GPU:** no lock is needed. Results from different
+  hardware are comparable only when the config hash and data version match, so
+  quote both. Small numeric differences across GPUs are expected. The
+  maintainer decides which runs are reported.
 
 ## 7. Notebooks
 
