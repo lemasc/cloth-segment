@@ -14,7 +14,7 @@ from cloth_segment import evaluate, models, paths, runs
 from cloth_segment.data.dataset import SegDataset, class_pixel_counts
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES
 from cloth_segment.models import build_model, logits_at, register
-from cloth_segment.train import build_optimizer, eval_steps, loss_fn, lr_factor
+from cloth_segment.train import build_optimizer, cap_gpu_memory, eval_steps, loss_fn, lr_factor
 
 # --- LR schedule and eval steps ---------------------------------------------------
 
@@ -120,6 +120,20 @@ def test_logits_at():
     x = torch.randn(2, NUM_CLASSES, 4, 4)
     assert logits_at(x, (4, 4)) is x
     assert logits_at(x, (16, 16)).shape == (2, NUM_CLASSES, 16, 16)
+
+
+@pytest.mark.parametrize(("device", "index"), [("cuda", 0), ("cuda:1", 1)])
+def test_cap_gpu_memory_passes_a_device_index(monkeypatch, device, index):
+    # torch raises on a bare torch.device("cuda"), the default of `train.main`
+    calls = []
+    monkeypatch.setattr(torch.cuda, "current_device", lambda: 0)
+    monkeypatch.setattr(torch.cuda, "mem_get_info", lambda i: (6 * 2**30, 12 * 2**30))
+    monkeypatch.setattr(
+        torch.cuda, "set_per_process_memory_fraction", lambda f, i: calls.append((f, i))
+    )
+    assert cap_gpu_memory(torch.device(device)) == 6 * 1024
+    assert calls == [(0.5, index)]
+    assert cap_gpu_memory(torch.device("cpu")) is None
 
 
 def test_amp_dtype():
