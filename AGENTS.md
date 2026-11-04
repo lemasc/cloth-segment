@@ -31,7 +31,7 @@ uv run python -m cloth_segment.train configs/<experiment>.yaml
   scripts, and never delete anything there: they may be shared storage.
 - Do not start a GPU job unless the user asked. If the GPU is shared, take the
   GPU lock first and release it afterwards.
-- Do not add dependencies without asking; use `uv add` and commit `uv.lock`.
+- Add dependencies with `uv add` and commit `uv.lock`. Justify each new one in the PR.
 - Never invent or estimate metrics. Report a failing test or run as failing,
   with its output.
 - Never commit data, checkpoints, credentials or files over 5 MB.

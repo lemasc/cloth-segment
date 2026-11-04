@@ -39,8 +39,8 @@ def test_assign_rules():
     ds = ["lip", "lip", "lip", "cihp", "dfmm"]
     src = ["val", "train", "train", "train", "all"]
     groups = ["g1", "g1", "g2", "g3", "g4"]
-    empty = np.array([False, False, True, False, False])
-    split, reason = S.assign(ds, src, groups, empty)
+    scope = ["", "", "empty_mask", "", ""]
+    split, reason = S.assign(ds, src, groups, scope)
     assert split[0] == "test"  # official val is test
     assert (split[1], reason[1]) == ("excluded", "leak_test")  # shares a group with test
     assert (split[2], reason[2]) == ("excluded", "empty_mask")
@@ -49,7 +49,7 @@ def test_assign_rules():
 
 def test_assign_rejects_mixed_groups():
     with pytest.raises(ValueError, match="mixes"):
-        S.assign(["lip", "dfmm"], ["train", "all"], ["g", "g"], np.zeros(2, bool))
+        S.assign(["lip", "dfmm"], ["train", "all"], ["g", "g"], ["", ""])
 
 
 def test_dhash_finds_rescaled_copies():
@@ -64,3 +64,40 @@ def test_dhash_finds_rescaled_copies():
     assert [tuple(p[:2]) for p in pairs] == [(0, 1)]
     t = np.asarray(img.resize((32, 32)))[None]
     assert thumb_corr(t, t)[0] > 0.99
+
+
+def test_scope_reasons():
+    h = np.array([100, 63, 64, 500, 100, 20])
+    w = np.array([100, 200, 64, 83, 600, 20])
+    empty = np.array([False, False, False, False, False, True])
+    got = S.scope_reasons(h, w, empty, min_side=64, max_aspect=6.0)
+    # 63 px short side; exactly 64 kept; 500/83 > 6; 600/100 == 6 kept; empty wins
+    assert got == ["", "too_small", "", "extreme_aspect", "", "empty_mask"]
+
+
+def test_out_of_scope_test_image_does_not_leak_into_train():
+    # g1: official val image is too small (excluded); its group-mate in train must stay.
+    ds, src, groups = ["lip", "lip"], ["val", "train"], ["g1", "g1"]
+    split, reason = S.assign(ds, src, groups, ["too_small", ""])
+    assert (split[0], reason[0]) == ("excluded", "too_small")
+    assert split[1] in ("train", "val")
+
+
+def test_out_of_scope_rows_do_not_join_duplicate_groups():
+    import pandas as pd
+
+    # row 1 (thin) is a duplicate of rows 0 and 2; if it bridged them, train row 2
+    # would be dropped as a leak of test row 0.
+    df = pd.DataFrame(
+        {
+            "dataset": ["lip", "lip", "cihp"],
+            "source_split": ["val", "train", "train"],
+            "id": ["1_1", "2_1", "9"],
+            "h": [300, 700, 300],
+            "w": [200, 100, 200],
+            "c1": [5, 5, 5],
+        }
+    )
+    groups, split, reason = S.apply_rules(df, [0, 1], [1, 2])
+    assert (split[1], reason[1]) == ("excluded", "extreme_aspect")
+    assert groups[0] != groups[2] and split[2] in ("train", "val")
