@@ -23,4 +23,6 @@ augment:                            # train split only; eval = resize long side 
 model:
   name: null           # unet_r34 | deeplabv3p_r50 | segformer_b2
 
-train: {}
+train:                 # shared comparison fields (D5): same for every model
+  batch_size: 8        # largest that fits SegFormer-B2 at 512 on the 12 GB GPU (T5 probe)
+  iters: 40000         # optimizer steps, about 5 epochs of the 62,500 train images
