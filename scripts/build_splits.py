@@ -156,6 +156,7 @@ def main() -> None:
         "seed": S.SEED,
         "val_frac": S.VAL_FRAC,
         "test_frac": S.TEST_FRAC,
+        "scope_rule": {"min_side": S.MIN_SIDE, "max_aspect": S.MAX_ASPECT},
         "duplicate_rule": {
             "hash": "dhash64 (+mirrored)",
             "hash_max_dist": S.HASH_MAX_DIST,
