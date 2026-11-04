@@ -1,8 +1,10 @@
 """Evaluation protocol and metrics (shared contract, CONTRIBUTING section 4).
 
-Entry point: `python -m cloth_segment.evaluate <run> <test_set>`, cached per
-(run, test set, EVAL_VERSION); writes `eval/<test_set>/metrics.json`. The
-metric code is T5; the run loading and reports are T5/T9.
+Entry point: `python -m cloth_segment.evaluate <run> [test_set ...]` (T5).
+Scores the run's `ckpt/best.pt` on each test set (default: lip, cihp, dfmm,
+whatever the run trained on, so cross-dataset tables need no extra step) and
+writes `eval/<EVAL_VERSION>/<test_set>/metrics.json` into the run folder. An
+existing file is never overwritten: that is the cache. Reports are T9.
 
 Protocol (eval-v1):
 - Predictions are scored at the **original mask resolution**. Logits from the
@@ -16,24 +18,34 @@ Protocol (eval-v1):
   the mean (its IoU is 0 or undefined there). Pixels wrongly predicted as it
   are still false negatives of their true class, so they lower that class's
   IoU, and they show in the confusion matrix.
-- No test-time augmentation.
+- No test-time augmentation. Autocast follows the run's `train.amp`; the
+  argmax is taken on float32 logits.
+- The checkpoint is `best.pt` (highest mIoU on the internal val split), never
+  one chosen on a test set (D4).
 
 Changing any of this changes reported numbers: bump EVAL_VERSION.
 """
 
 from __future__ import annotations
 
+import argparse
 import contextlib
-from collections.abc import Sequence
+import json
+import sys
+import time
+from collections.abc import Callable, Sequence
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
+import yaml
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from cloth_segment.data.dataset import SegDataset, collate, read_mask
+from cloth_segment import paths, runs
+from cloth_segment.data.dataset import DATASET_NAMES, SegDataset, collate, load_split, read_mask
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
-from cloth_segment.models import logits_at
+from cloth_segment.models import build_model, logits_at
 
 EVAL_VERSION = "eval-v1"
 
@@ -195,9 +207,127 @@ def predict_confusion(
     return cm
 
 
-def main() -> None:
-    raise NotImplementedError("T5/T9: test-set entry point (run loading, metrics.json)")
+# ---------------------------------------------------------------- test-set entry point
+
+TEST_SETS: tuple[str, ...] = DATASET_NAMES  # test split of each dataset (D4)
+CHECKPOINT = "best.pt"
+
+
+def resolve_run(run: str | Path, runs_dir: Path = paths.RUNS) -> Path:
+    """A run folder given as a path or as a name under `runs_dir`; must be finished."""
+    run_dir = Path(run)
+    if not (run_dir / "meta.json").exists():
+        run_dir = runs_dir / str(run)
+    if not (run_dir / "meta.json").exists():
+        raise FileNotFoundError(f"no run folder {run!r} (looked in {runs_dir})")
+    status = runs.read_meta(run_dir).get("status")
+    if status != "finished":
+        raise ValueError(f"{run_dir.name}: status is {status!r}, not finished")
+    return run_dir
+
+
+def metrics_path(run_dir: Path, test_set: str) -> Path:
+    return run_dir / "eval" / EVAL_VERSION / test_set / "metrics.json"
+
+
+def load_test_set(cfg: dict, test_set: str) -> SegDataset:
+    """The test split of one dataset, with the run's data version and input size."""
+    if test_set not in TEST_SETS:
+        raise ValueError(f"test set must be one of {TEST_SETS}, got {test_set!r}")
+    one = cfg | {"data": cfg["data"] | {"datasets": [test_set]}}
+    return load_split(one, "test", train=False)
+
+
+def load_model(run_dir: Path, cfg: dict, device: torch.device) -> tuple[nn.Module, int]:
+    """The run's model with `ckpt/best.pt` loaded; returns (model, checkpoint step)."""
+    state = torch.load(run_dir / "ckpt" / CHECKPOINT, map_location="cpu", weights_only=True)
+    model = build_model(cfg["model"])
+    model.load_state_dict(state["model"])
+    return model.to(device).eval(), int(state["step"])
+
+
+def evaluate_run(
+    run_dir: Path,
+    test_sets: Sequence[str],
+    device: torch.device,
+    *,
+    num_workers: int | None = None,
+    make_dataset: Callable[[dict, str], SegDataset] = load_test_set,
+) -> dict[str, Path]:
+    """Score `best.pt` on each test set not scored yet; returns test set -> metrics.json."""
+    meta = runs.read_meta(run_dir)
+    cfg = yaml.safe_load((run_dir / "config.yaml").read_text())  # resolved at run start
+    todo = [t for t in test_sets if not metrics_path(run_dir, t).exists()]
+    out = {t: metrics_path(run_dir, t) for t in test_sets}
+    if not todo:
+        return out
+    model, step = load_model(run_dir, cfg, device)
+    dtype = amp_dtype(cfg["train"]["amp"], device)
+    workers = (cfg.get("run") or {}).get("num_workers", 0) if num_workers is None else num_workers
+    for test_set in todo:
+        t0 = time.perf_counter()
+        dataset = make_dataset(cfg, test_set)
+        loader = eval_loader(dataset, cfg["train"]["batch_size"], workers)
+        cm = predict_confusion(model, loader, device, dtype)
+        result = {
+            "run": run_dir.name,
+            "config_hash": meta["config_hash"],
+            "data_version": cfg["data"]["version"],
+            "test_set": test_set,
+            "split": "test",
+            "images": len(dataset),
+            "checkpoint": CHECKPOINT,
+            "checkpoint_step": step,
+            **scores(cm, SHARED_CLASSES),
+            "confusion_matrix": cm.tolist(),  # rows = ground truth, columns = prediction
+            "classes": list(SHARED_CLASSES),
+            "eval_commit": "{}{}".format(*_commit()),
+            "device": str(device),
+            "seconds": round(time.perf_counter() - t0, 1),
+        }
+        path = out[test_set]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n")
+        tmp.replace(path)
+        print(f"{test_set}: mIoU {result['miou']:.4f} ({len(dataset)} images) -> {path}")
+    return out
+
+
+def _commit() -> tuple[str, str]:
+    try:
+        commit, dirty = runs.git_state()
+    except Exception:  # not a git checkout: still write metrics, mark the commit unknown
+        return "unknown", ""
+    return commit, "-dirty" if dirty else ""
+
+
+def main(argv: list[str] | None = None) -> int:
+    p = argparse.ArgumentParser(description="Score a finished run on the test sets (eval-v1).")
+    p.add_argument("run", help="run folder, or its name under runs/")
+    p.add_argument("test_sets", nargs="*", default=list(TEST_SETS), help=f"{TEST_SETS}")
+    p.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
+    p.add_argument("--workers", type=int, default=None, help="default: the run's num_workers")
+    p.add_argument("--wait", action="store_true", help="wait for the GPU lock instead of failing")
+    args = p.parse_args(argv)
+    bad = [t for t in args.test_sets if t not in TEST_SETS]
+    if bad:
+        p.error(f"unknown test sets {bad}; choose from {TEST_SETS}")
+    run_dir = resolve_run(args.run)
+    device = torch.device(args.device)
+    lock = (
+        runs.gpu_lock(f"eval {run_dir.name}", wait=args.wait)
+        if device.type == "cuda"
+        else contextlib.nullcontext()
+    )
+    try:
+        with lock:
+            evaluate_run(run_dir, args.test_sets, device, num_workers=args.workers)
+    except runs.GpuBusy as e:
+        print(f"{e}; use --wait to queue", file=sys.stderr)
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
