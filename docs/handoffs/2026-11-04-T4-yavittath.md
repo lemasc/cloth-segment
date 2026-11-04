@@ -65,7 +65,9 @@
 
 ## Open items
 - **Freeze contract:** เมื่อ T4 merge แล้ว label set และ splits จะ freeze
-  (CONTRIBUTING ข้อ 4) maintainer ต้องยืนยันว่า review threshold ของ duplicate แล้ว
+  (CONTRIBUTING ข้อ 4) ค่า threshold ของ duplicate ยืนยันแล้วสำหรับ baseline แรก
+  (`CORR_MIN` = 0.70, `CORR_MIN_DFMM_PAIR` = 0.98, `splits-v2`) ส่วนสถานะ `frozen`
+  ในตาราง CONTRIBUTING ข้อ 4 maintainer เป็นคนแก้เอง
 - **Shared comparison fields:** PR นี้ใส่ค่าลงใน `configs/base.yaml` (contract ยังเปิดอยู่)
   ค่าเหล่านี้ยังแก้ได้จนกว่า T5 จะมี baseline run ที่ตกลงกัน
 - batch size และจำนวน worker เป็นเรื่องของ T5
