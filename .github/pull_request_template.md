@@ -12,7 +12,7 @@
 - [ ] Tests added for new logic
 - [ ] Docs / README updated if behaviour changed
 - [ ] Handoff note added in `docs/handoffs/`
-- [ ] `PLAN.md` status updated (own task only)
+- [ ] `PLAN.md`: own task set to `doing` (first commit) and `done` (last commit); nothing else changed
 
 ## Shared contracts
 

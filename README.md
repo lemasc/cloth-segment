@@ -45,4 +45,4 @@ Full rules: [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, review, shared contr
 
 - Commit before launching any run you might keep (the run name includes the commit).
 - Long runs: launch from a terminal (tmux), not a notebook kernel. On a shared GPU, take the lock.
-- Mark a task `doing` in `docs/PLAN.md` when you start it, and push.
+- Tell the team which task you take. Set it to `doing` in `docs/PLAN.md` as the first commit of your task branch, and `done` before review (same PR).
