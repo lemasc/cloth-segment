@@ -1,0 +1,117 @@
+{
+  "meta": {
+    "device": "NVIDIA GeForce RTX 4070",
+    "total_mib": 12281.5,
+    "torch": "2.14.1+cu126",
+    "size": 512,
+    "amp": true,
+    "iters": 20,
+    "warmup": 5
+  },
+  "results": [
+    {
+      "model": "unet_r34",
+      "batch_size": 4,
+      "ok": true,
+      "peak_mem_mib": 1277.017578125,
+      "sec_per_iter": 0.049459540902171285,
+      "error": ""
+    },
+    {
+      "model": "unet_r34",
+      "batch_size": 8,
+      "ok": true,
+      "peak_mem_mib": 2231.392578125,
+      "sec_per_iter": 0.09421113705029711,
+      "error": ""
+    },
+    {
+      "model": "unet_r34",
+      "batch_size": 12,
+      "ok": true,
+      "peak_mem_mib": 3174.017578125,
+      "sec_per_iter": 0.14172934114467353,
+      "error": ""
+    },
+    {
+      "model": "unet_r34",
+      "batch_size": 16,
+      "ok": true,
+      "peak_mem_mib": 4114.642578125,
+      "sec_per_iter": 0.18733820074703544,
+      "error": ""
+    },
+    {
+      "model": "unet_r34",
+      "batch_size": 24,
+      "ok": true,
+      "peak_mem_mib": 5996.517578125,
+      "sec_per_iter": 0.2835269385948777,
+      "error": ""
+    },
+    {
+      "model": "deeplabv3p_r50",
+      "batch_size": 4,
+      "ok": true,
+      "peak_mem_mib": 1805.6240234375,
+      "sec_per_iter": 0.057009981048759074,
+      "error": ""
+    },
+    {
+      "model": "deeplabv3p_r50",
+      "batch_size": 8,
+      "ok": true,
+      "peak_mem_mib": 3246.8935546875,
+      "sec_per_iter": 0.10446772484574467,
+      "error": ""
+    },
+    {
+      "model": "deeplabv3p_r50",
+      "batch_size": 12,
+      "ok": true,
+      "peak_mem_mib": 4685.6630859375,
+      "sec_per_iter": 0.1587559920968488,
+      "error": ""
+    },
+    {
+      "model": "deeplabv3p_r50",
+      "batch_size": 16,
+      "ok": true,
+      "peak_mem_mib": 6119.4326171875,
+      "sec_per_iter": 0.2101453694049269,
+      "error": ""
+    },
+    {
+      "model": "deeplabv3p_r50",
+      "batch_size": 24,
+      "ok": true,
+      "peak_mem_mib": 8994.2216796875,
+      "sec_per_iter": 0.3179952693055384,
+      "error": ""
+    },
+    {
+      "model": "segformer_b2",
+      "batch_size": 4,
+      "ok": true,
+      "peak_mem_mib": 4520.12646484375,
+      "sec_per_iter": 0.10167200234718621,
+      "error": ""
+    },
+    {
+      "model": "segformer_b2",
+      "batch_size": 8,
+      "ok": true,
+      "peak_mem_mib": 8646.88427734375,
+      "sec_per_iter": 0.19593089250847698,
+      "error": ""
+    },
+    {
+      "model": "segformer_b2",
+      "batch_size": 12,
+      "ok": false,
+      "peak_mem_mib": 8823.28076171875,
+      "sec_per_iter": null,
+      "error": "CUDA out of memory. Tried to allocate 2.25 GiB. GPU 0 has a total capacity of 11.99 GiB of which 1.39 GiB is free. 10.83 GiB allowed; Of the allocated memory 8.60 GiB is allocated by PyTorch, and 52.22 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)"
+    }
+  ]
+}
