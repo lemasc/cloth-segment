@@ -65,3 +65,10 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | E3 | Loss comparison: CE vs CE + Dice | todo |
 | E4 | Fashionpedia as out-of-domain test set (garment classes only) | todo |
 | E5 | Revisit ATR | todo |
+
+### Maintenance (decisions and data fixes, not deliverables)
+
+| ID | Task | Status |
+|---|---|---|
+| M1 | D4 empty-mask rule for test sets (PR #3) | done |
+| M2 | Size and shape filter for LIP/CIHP/DFMM, `splits-v2` | todo |
