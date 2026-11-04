@@ -23,12 +23,17 @@ Changing any of this changes reported numbers: bump EVAL_VERSION.
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Sequence
 
 import torch
 import torch.nn.functional as F
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
+from cloth_segment.data.dataset import SegDataset, collate, read_mask
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
+from cloth_segment.models import logits_at
 
 EVAL_VERSION = "eval-v1"
 
@@ -103,8 +108,95 @@ def scores(cm: torch.Tensor, class_names: Sequence[str] = SHARED_CLASSES) -> dic
     }
 
 
+AMP_DTYPES = {"bf16": torch.bfloat16, "fp16": torch.float16, "none": None}
+
+
+def amp_dtype(name: str, device: torch.device) -> torch.dtype | None:
+    """Autocast dtype for `train.amp` on this device; None = full precision."""
+    if name not in AMP_DTYPES:
+        raise ValueError(f"train.amp must be one of {sorted(AMP_DTYPES)}, got {name!r}")
+    if device.type != "cuda":
+        return None
+    dtype = AMP_DTYPES[name]
+    if dtype is torch.bfloat16 and not torch.cuda.is_bf16_supported():
+        raise RuntimeError("train.amp is bf16 but this GPU does not support bf16")
+    return dtype
+
+
+def autocast(device: torch.device, dtype: torch.dtype | None):
+    """Autocast context for `dtype`, or a no-op for full precision."""
+    if dtype is None:
+        return contextlib.nullcontext()
+    return torch.autocast(device.type, dtype=dtype)
+
+
+class WithOriginalMask(Dataset):
+    """Eval samples plus `orig_mask`, the mask at its original resolution (eval-v1).
+
+    Read in the loader workers, so scoring does not wait on PNG decoding.
+    """
+
+    def __init__(self, dataset: SegDataset):
+        if dataset.train:
+            raise ValueError("evaluation needs a dataset built with train=False")
+        self.dataset = dataset
+
+    def __len__(self) -> int:
+        return len(self.dataset)
+
+    def __getitem__(self, i: int) -> dict:
+        sample = self.dataset[i]
+        sample["orig_mask"] = read_mask(self.dataset.mask_root / self.dataset.rows.at[i, "mask"])
+        return sample
+
+
+def eval_collate(batch: list[dict]) -> dict:
+    """`collate`, keeping the differently sized original masks as a list."""
+    masks = [b.pop("orig_mask") for b in batch]
+    out = collate(batch)
+    out["orig_mask"] = masks
+    return out
+
+
+def eval_loader(dataset: SegDataset, batch_size: int, num_workers: int) -> DataLoader:
+    return DataLoader(
+        WithOriginalMask(dataset),
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=eval_collate,
+        pin_memory=torch.cuda.is_available(),
+        persistent_workers=False,
+    )
+
+
+@torch.no_grad()
+def predict_confusion(
+    model: nn.Module,
+    loader: DataLoader,
+    device: torch.device,
+    dtype: torch.dtype | None = None,
+) -> torch.Tensor:
+    """Run `model` over an `eval_loader` and sum one confusion matrix (eval-v1).
+
+    Leaves the model in eval mode; the caller switches it back to train.
+    """
+    model.eval()
+    cm = torch.zeros(NUM_CLASSES, NUM_CLASSES, dtype=torch.int64)
+    for batch in loader:
+        x = batch["image"].to(device, non_blocking=True)
+        with autocast(device, dtype):
+            logits = model(x)
+        logits = logits_at(logits.float(), x.shape[-2:])
+        for k in range(x.shape[0]):
+            full = restore_logits(logits[k], batch["valid_hw"][k], batch["orig_hw"][k])
+            target = batch["orig_mask"][k].to(device, non_blocking=True)
+            cm += confusion_matrix(full.argmax(0), target)
+    return cm
+
+
 def main() -> None:
-    raise NotImplementedError("T5/T9: run loading and test-set loop (needs runs.py)")
+    raise NotImplementedError("T5/T9: test-set entry point (run loading, metrics.json)")
 
 
 if __name__ == "__main__":
