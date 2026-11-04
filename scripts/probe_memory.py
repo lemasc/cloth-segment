@@ -29,7 +29,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--config", type=Path, default=paths.CONFIGS / "base.yaml")
     p.add_argument("--models", nargs="+", default=list(ARCHITECTURES), choices=list(ARCHITECTURES))
-    p.add_argument("--batch-sizes", nargs="+", type=int, default=[4, 8, 16, 24, 32])
+    p.add_argument("--batch-sizes", nargs="+", type=int, default=[4, 8, 12, 16, 24])
     p.add_argument("--iters", type=int, default=20)
     p.add_argument("--warmup", type=int, default=5)
     p.add_argument("--no-amp", action="store_true")
@@ -44,14 +44,19 @@ def main() -> None:
     seed = int(cfg["seed"])
 
     if torch.cuda.is_available():
-        device = torch.device("cuda")
+        device = torch.device("cuda", torch.cuda.current_device())
         free, total = torch.cuda.mem_get_info(device)
         total_mib, used_mib = total / 2**20, (total - free) / 2**20
         print(f"GPU: {torch.cuda.get_device_name(device)}, {total_mib:.0f} MiB total")
         if used_mib > 1024:
             print(f"WARNING: {used_mib:.0f} MiB already in use by other processes.")
+        # Cap at the memory that is free now, so PyTorch raises OOM instead of the
+        # WSL driver silently spilling into system RAM (very slow, not a real fit).
+        max_mib = free / 2**20
+        torch.cuda.set_per_process_memory_fraction(free / total, device)
+        print(f"cap: {max_mib:.0f} MiB")
     elif args.allow_cpu:
-        device, total_mib = torch.device("cpu"), None
+        device, total_mib, max_mib = torch.device("cpu"), None, None
     else:
         raise SystemExit("No CUDA device. Use --allow-cpu for a smoke test.")
 
@@ -66,8 +71,10 @@ def main() -> None:
         iters=args.iters,
         warmup=args.warmup,
         seed=seed,
+        max_mib=max_mib,
+        on_result=lambda r: print(format_table([r], total_mib).splitlines()[-1], flush=True),
     )
-    print(format_table(results, total_mib))
+    print("\n" + format_table(results, total_mib))
 
     if args.out:
         meta = {

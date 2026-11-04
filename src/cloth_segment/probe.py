@@ -15,7 +15,7 @@ from __future__ import annotations
 import gc
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 
 import torch
 import torch.nn.functional as F
@@ -172,8 +172,14 @@ def probe_models(
     warmup: int = 5,
     seed: int = 0,
     builders: dict[str, Callable[[], nn.Module]] | None = None,
+    on_result: Callable[[ProbeResult], None] | None = None,
+    max_mib: float | None = None,
 ) -> list[ProbeResult]:
-    """Probe every (model, batch size). Stops growing the batch after the first OOM."""
+    """Probe every (model, batch size). Stops growing the batch after the first failure.
+
+    A run whose peak memory exceeds `max_mib` counts as a failure: on WSL the
+    driver may spill into system RAM instead of raising OOM, which is very slow.
+    """
     builders = builders or ARCHITECTURES
     results = []
     for name in names:
@@ -190,7 +196,11 @@ def probe_models(
                 warmup=warmup,
                 seed=seed,
             )
+            if r.ok and max_mib and r.peak_mem_mib and r.peak_mem_mib > max_mib:
+                r = replace(r, ok=False, error=f"peak {r.peak_mem_mib:.0f} MiB > {max_mib:.0f}")
             results.append(r)
+            if on_result:
+                on_result(r)
             del model
             _free(device)
             if not r.ok:
@@ -211,6 +221,6 @@ def format_table(results: list[ProbeResult], total_mib: float | None = None) -> 
         )
         sec = f"{r.sec_per_iter:.3f}" if r.sec_per_iter else "-"
         ips = f"{r.batch_size / r.sec_per_iter:.1f}" if r.sec_per_iter else "-"
-        ok = "yes" if r.ok else "OOM"
+        ok = "yes" if r.ok else ("over" if r.sec_per_iter else "OOM")
         lines.append(f"| {r.model} | {r.batch_size} | {ok} | {mem} | {pct} | {sec} | {ips} |")
     return "\n".join(lines)

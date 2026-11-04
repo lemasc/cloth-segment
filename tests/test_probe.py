@@ -87,3 +87,24 @@ def test_architectures_build(name, stride, params_m):
     assert out.shape == (1, NUM_CLASSES, 64 // stride, 64 // stride)
     n = sum(p.numel() for p in model.parameters()) / 1e6
     assert params_m[0] < n < params_m[1], n
+
+
+def test_probe_models_over_cap_counts_as_failure(monkeypatch):
+    import cloth_segment.probe as probe
+
+    seen = []
+    monkeypatch.setattr(probe, "_peak", lambda device: 5000.0)
+    res = probe_models(
+        ["tiny"],
+        [2, 4],
+        size=16,
+        device=CPU,
+        iters=1,
+        warmup=0,
+        builders={"tiny": _Downsampling},
+        max_mib=1000.0,
+        on_result=seen.append,
+    )
+    assert [r.batch_size for r in res] == [2] and seen == res
+    assert not res[0].ok and "> 1000" in res[0].error
+    assert "| tiny | 2 | over |" in format_table(res)
