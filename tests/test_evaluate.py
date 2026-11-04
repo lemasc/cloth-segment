@@ -23,7 +23,7 @@ SPECS = [
 class _Constant(nn.Module):
     """Predicts one class everywhere at 1/4 resolution; the class is a saved parameter."""
 
-    def __init__(self, cfg):
+    def __init__(self):
         super().__init__()
         self.bias = nn.Parameter(torch.zeros(NUM_CLASSES))
 
@@ -34,7 +34,7 @@ class _Constant(nn.Module):
 
 @pytest.fixture
 def run_dir(tmp_path, monkeypatch):
-    monkeypatch.setattr(models, "REGISTRY", {"const": _Constant})
+    monkeypatch.setattr(models, "MODELS", {"const": _Constant})
     cfg = yaml.safe_load((paths.CONFIGS / "base.yaml").read_text())
     cfg["model"]["name"] = "const"
     cfg["input"]["size"] = 64
@@ -43,7 +43,7 @@ def run_dir(tmp_path, monkeypatch):
         cfg, "t", tmp_path / "runs", now=dt.datetime(2026, 11, 5), git=("abc1234", False)
     )
     (rd / "ckpt").mkdir()
-    model = _Constant(cfg)
+    model = _Constant()
     with torch.no_grad():
         model.bias[4] = 1.0
     torch.save({"step": 123, "model": model.state_dict()}, rd / "ckpt" / "best.pt")

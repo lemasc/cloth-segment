@@ -13,7 +13,8 @@ from torch import nn
 from cloth_segment import evaluate, models, paths, runs
 from cloth_segment.data.dataset import SegDataset, class_pixel_counts
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES
-from cloth_segment.models import build_model, logits_at, register
+from cloth_segment.evaluate import logits_at
+from cloth_segment.models import build_model, register
 from cloth_segment.train import build_optimizer, eval_steps, loss_fn, lr_factor
 
 # --- LR schedule and eval steps ---------------------------------------------------
@@ -99,21 +100,19 @@ def test_run_section_is_not_hashed():
 # --- model registry -----------------------------------------------------------------
 
 
-def test_build_model_errors():
-    with pytest.raises(ValueError, match="no model.name"):
-        build_model({"name": None})
-    with pytest.raises(NotImplementedError, match="T6"):
-        build_model({"name": "unet_r34"})
-    with pytest.raises(ValueError, match="unknown"):
-        build_model({"name": "nope"})
+def test_build_model_unknown_name():
+    with pytest.raises(ValueError, match="unknown model.name"):
+        build_model({"model": {"name": None}})
+    with pytest.raises(ValueError, match="unknown model.name"):
+        build_model({"model": {"name": "nope"}})
 
 
-def test_register_and_build(monkeypatch):
-    monkeypatch.setattr(models, "REGISTRY", {})
-    register("tiny")(lambda cfg: nn.Conv2d(3, NUM_CLASSES, 1))
-    assert isinstance(build_model({"name": "tiny"}), nn.Conv2d)
-    with pytest.raises(ValueError, match="twice"):
-        register("tiny")(lambda cfg: nn.Identity())
+def test_register_and_build_with_kwargs(monkeypatch):
+    monkeypatch.setattr(models, "MODELS", {})
+    register("tiny")(lambda width: nn.Conv2d(3, width, 1))
+    assert build_model({"model": {"name": "tiny", "width": 5}}).out_channels == 5
+    with pytest.raises(ValueError, match="already registered"):
+        register("tiny")(lambda: nn.Identity())
 
 
 def test_logits_at():
