@@ -1,0 +1,51 @@
+# Agent instructions
+
+Clothing-centric human parsing: 3 segmentation models (U-Net, DeepLabV3+,
+SegFormer) compared on LIP + CIHP + DeepFashion-MultiModal with one shared label
+set. Python 3.12, `uv`, PyTorch.
+
+**Read first:** `docs/PLAN.md` (scope, decisions D1–D9, task status), then
+`CONTRIBUTING.md` and `docs/conventions.md`. Work on exactly one task ID.
+
+## Commands
+
+```bash
+uv sync
+uv run ruff check . && uv run ruff format --check .
+uv run pytest
+uv run python -m cloth_segment.train configs/<experiment>.yaml
+```
+
+## Hard rules
+
+- Never push to or commit on `main`. Work on a branch `<task-id>/<slug>`.
+- Never use `--no-verify` or force-push.
+- Do not change frozen areas (label set, converters, splits/manifest, eval
+  protocol, shared comparison fields: see CONTRIBUTING section 4) unless the
+  task is explicitly a `frozen-change`.
+- Do not edit D-rows or the scope table in `PLAN.md`. You may set your own
+  task's status and nothing else in that table.
+- Do not write to `datasets/`, `data/` or `runs/` (shared mount) except through
+  the project's scripts. Never delete anything there.
+- Do not start a GPU job unless the user asked; if so, take the GPU lock and
+  release it.
+- Do not add dependencies without asking; use `uv add` and commit `uv.lock`.
+- Never invent or estimate metrics. Report a failing test or run as failing,
+  with its output.
+- Never commit data, checkpoints, credentials or files over 5 MB.
+
+## Conventions in brief
+
+- Reusable code in `src/cloth_segment/`; `scripts/` and notebooks stay thin.
+- Everything configurable lives in YAML, no hard-coded paths or seeds.
+- New logic gets a test that runs without the real datasets or a GPU.
+- Conventional commits (`feat:`, `fix:`, `docs:` ...), small focused diffs.
+- Ruff is enforced by pre-commit; fix what it reports, do not silence it.
+- Jupyter notebooks keep their outputs. Do not clear them.
+
+## Finishing a task
+
+1. Run ruff and pytest; paste the result in the PR.
+2. Add `docs/handoffs/<date>-<task>-<name>.md` from `docs/handoffs/TEMPLATE.md`.
+3. Open the PR with the template filled in (tick the agent box). Stay within the
+   task: list scope creep in the PR as follow-ups instead of doing it.

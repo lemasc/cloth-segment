@@ -12,6 +12,7 @@ Session notes: [`docs/handoffs/`](docs/handoffs/).
 ```bash
 uv sync
 scripts/setup_links.sh          # datasets/, data/, runs/ -> /shared/deeplearn/cloth
+uv run pre-commit install       # ruff + safety hooks, once per clone
 uv run pytest
 ```
 
@@ -37,6 +38,9 @@ docs/          PLAN.md, handoffs/, reports/
 `datasets/`, `data/` and `runs/` are gitignored symlinks into the shared mount.
 
 ## Working conventions
+
+Full rules: [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, review, frozen areas),
+[`docs/conventions.md`](docs/conventions.md) (code), [`AGENTS.md`](AGENTS.md) (coding agents).
 
 - Commit before launching any run you might keep (the run name includes the commit).
 - Long runs: launch from a terminal (tmux), not a notebook kernel.
