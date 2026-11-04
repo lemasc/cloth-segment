@@ -37,7 +37,7 @@ from torch.utils.data import DataLoader
 from cloth_segment import evaluate, runs
 from cloth_segment.data.dataset import SegDataset, collate, load_split, make_sampler
 from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
-from cloth_segment.models import build_model
+from cloth_segment.models import build_model, logits_at
 
 LOSSES = ("ce",)
 
@@ -76,7 +76,7 @@ def loss_fn(logits: torch.Tensor, target: torch.Tensor, loss_cfg: dict) -> torch
     """Segmentation loss on logits upsampled to the mask size; IGNORE pixels skipped."""
     if loss_cfg["name"] not in LOSSES:
         raise ValueError(f"loss.name must be one of {LOSSES}, got {loss_cfg['name']!r}")
-    logits = evaluate.logits_at(logits, target.shape[-2:])
+    logits = logits_at(logits, target.shape[-2:])
     return F.cross_entropy(logits.float(), target, ignore_index=IGNORE)
 
 
@@ -223,7 +223,7 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
     slug = cfg["run"].get("slug") or Path(config).stem
     if (hit := runs.find_finished(runs.config_hash(cfg))) is not None:
         raise runs.AlreadyFinished(hit)
-    model = build_model(cfg)  # fail before taking the lock or making a folder
+    model = build_model(cfg["model"])  # fail before taking the lock or making a folder
     train_set = load_split(cfg, "train")
     val_set = load_split(cfg, cfg["eval"]["split"], train=False)
 

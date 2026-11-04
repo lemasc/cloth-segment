@@ -45,7 +45,7 @@ from torch.utils.data import DataLoader, Dataset
 from cloth_segment import paths, runs
 from cloth_segment.data.dataset import DATASET_NAMES, SegDataset, collate, load_split, read_mask
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
-from cloth_segment.models import build_model
+from cloth_segment.models import build_model, logits_at
 
 EVAL_VERSION = "eval-v1"
 
@@ -118,17 +118,6 @@ def scores(cm: torch.Tensor, class_names: Sequence[str] = SHARED_CLASSES) -> dic
         "gt_pixels": {n: int(v) for n, v in zip(class_names, gt)},
         "in_mean": [n for n, p in zip(class_names, present) if p],
     }
-
-
-def logits_at(logits: torch.Tensor, hw: Sequence[int]) -> torch.Tensor:
-    """Bilinearly resize (B, C, h, w) logits to `hw` if needed.
-
-    The model contract (T6) already returns logits at the input size; this is a
-    no-op guard so a model that does not cannot be scored at the wrong size.
-    """
-    if tuple(logits.shape[-2:]) == tuple(hw):
-        return logits
-    return F.interpolate(logits, size=tuple(hw), mode="bilinear", align_corners=False)
 
 
 AMP_DTYPES = {"bf16": torch.bfloat16, "fp16": torch.float16, "none": None}
@@ -252,7 +241,7 @@ def load_test_set(cfg: dict, test_set: str) -> SegDataset:
 def load_model(run_dir: Path, cfg: dict, device: torch.device) -> tuple[nn.Module, int]:
     """The run's model with `ckpt/best.pt` loaded; returns (model, checkpoint step)."""
     state = torch.load(run_dir / "ckpt" / CHECKPOINT, map_location="cpu", weights_only=True)
-    model = build_model(cfg)
+    model = build_model(cfg["model"])
     model.load_state_dict(state["model"])
     return model.to(device).eval(), int(state["step"])
 
