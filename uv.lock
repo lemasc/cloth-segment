@@ -425,6 +425,7 @@ dependencies = [
     { name = "pyyaml" },
     { name = "scipy" },
     { name = "seaborn" },
+    { name = "segmentation-models-pytorch" },
     { name = "torch", version = "2.14.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
     { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
     { name = "torch", version = "2.14.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
@@ -452,6 +453,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "scipy", specifier = ">=1.18.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "segmentation-models-pytorch", specifier = ">=0.6.0" },
     { name = "torch", marker = "sys_platform != 'linux'", specifier = "==2.14.1", index = "https://download.pytorch.org/whl/cpu" },
     { name = "torch", marker = "sys_platform == 'linux'", specifier = "==2.14.1", index = "https://download.pytorch.org/whl/cu126" },
     { name = "torchvision", marker = "sys_platform != 'linux'", specifier = ">=0.29.1", index = "https://download.pytorch.org/whl/cpu" },
@@ -3047,6 +3049,29 @@ wheels = [
 ]
 
 [[package]]
+name = "segmentation-models-pytorch"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "numpy" },
+    { name = "pillow" },
+    { name = "safetensors" },
+    { name = "timm" },
+    { name = "torch", version = "2.14.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+    { name = "torch", version = "2.14.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.29.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.29.2", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torchvision", version = "0.29.2+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/40/b5/dfeb5742787921c61b61490dcf1b599247547e9468bbf01b303eed3e7ee4/segmentation_models_pytorch-0.6.0.tar.gz", hash = "sha256:5f90a7a43fac608f85a9dce66f65297d887605da9c2caafb44aa875c30180424", size = 104077, upload-time = "2026-10-26T16:44:36.527Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/90/1af6ca7308f616210d30e81270712e6a460971b5233f5b6d7b36ecfd739b/segmentation_models_pytorch-0.6.0-py3-none-any.whl", hash = "sha256:c46162221b5abe3bc296b222fbea8aa80d0b56e7130f7ddef654f707804534e2", size = 154621, upload-time = "2026-10-26T16:44:35.106Z" },
+]
+
+[[package]]
 name = "send2trash"
 version = "2.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3133,6 +3158,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/8a/11/965c6fd8e5cc254f1fe142d547387da17a8ebfd75a3455f637c663fb38a0/terminado-0.18.1.tar.gz", hash = "sha256:de09f2c4b85de4765f7714688fff57d3e75bad1f909b589fde880460c753fd2e", size = 32701, upload-time = "2024-03-12T14:34:39.026Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6a/9e/2064975477fdc887e47ad42157e214526dcad8f317a948dee17e1659a62f/terminado-0.18.1-py3-none-any.whl", hash = "sha256:a4468e1b37bb318f8a86514f65814e1afc977cf29b3992a4500d9dd305dcceb0", size = 14154, upload-time = "2024-03-12T14:34:36.569Z" },
+]
+
+[[package]]
+name = "timm"
+version = "1.0.31"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "huggingface-hub" },
+    { name = "pyyaml" },
+    { name = "safetensors" },
+    { name = "torch", version = "2.14.1", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torch", version = "2.14.1+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+    { name = "torch", version = "2.14.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.29.1+cu126", source = { registry = "https://download.pytorch.org/whl/cu126" }, marker = "sys_platform == 'linux'" },
+    { name = "torchvision", version = "0.29.2", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform == 'darwin'" },
+    { name = "torchvision", version = "0.29.2+cpu", source = { registry = "https://download.pytorch.org/whl/cpu" }, marker = "sys_platform != 'darwin' and sys_platform != 'linux'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/d8/f0/ef613e01647ba8e39d073df11bfe157ea16d0280a9b4a973f1caf0601856/timm-1.0.31.tar.gz", hash = "sha256:baa0b333339c46d3d6d4965d99b69f5053afed71210e8f433d7ea5ee6a18f0ec", size = 2737241, upload-time = "2026-11-03T19:24:56.491Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/bb/b909b8f0517a8fa00ffb3a9a0ddb20da9dbe3554eb68dfc3c9a2db99db76/timm-1.0.31-py3-none-any.whl", hash = "sha256:5bd50f7d0fe6d09bf9285ac2523234a1b7e6bf075c0be3e7aed09139fcb617c7", size = 2798714, upload-time = "2026-11-03T19:24:54.508Z" },
 ]
 
 [[package]]
