@@ -8,8 +8,9 @@ from cloth_segment.data.dedup import dhash, near_pairs, thumb_corr, to_u64
 def test_group_keys():
     assert S.group_key("lip", "484151_962996") == S.group_key("lip", "484151_1750729")
     assert S.group_key("cihp", "0000006") != S.group_key("cihp", "0000007")
-    assert S.group_key("dfmm", "MEN-Denim-id_00000080-01_7_additional") == \
-        S.group_key("dfmm", "MEN-Suiting-id_00000080-02_1_front")
+    assert S.group_key("dfmm", "MEN-Denim-id_00000080-01_7_additional") == S.group_key(
+        "dfmm", "MEN-Suiting-id_00000080-02_1_front"
+    )
 
 
 def test_duplicate_thresholds():
@@ -40,8 +41,8 @@ def test_assign_rules():
     groups = ["g1", "g1", "g2", "g3", "g4"]
     empty = np.array([False, False, True, False, False])
     split, reason = S.assign(ds, src, groups, empty)
-    assert split[0] == "test"                                   # official val is test
-    assert (split[1], reason[1]) == ("excluded", "leak_test")   # shares a group with test
+    assert split[0] == "test"  # official val is test
+    assert (split[1], reason[1]) == ("excluded", "leak_test")  # shares a group with test
     assert (split[2], reason[2]) == ("excluded", "empty_mask")
     assert split[3] in ("train", "val") and split[4] in ("train", "val", "test")
 
@@ -53,6 +54,7 @@ def test_assign_rejects_mixed_groups():
 
 def test_dhash_finds_rescaled_copies():
     from PIL import Image
+
     rng = np.random.default_rng(0)
     base = (rng.random((8, 8)) * 255).astype(np.uint8).repeat(16, 0).repeat(16, 1)
     img = Image.fromarray(base)

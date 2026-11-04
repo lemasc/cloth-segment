@@ -7,14 +7,15 @@ app = marimo.App(width="full")
 @app.cell
 def _():
     import marimo as mo
+    import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import matplotlib.pyplot as plt
     from PIL import Image
 
     from cloth_segment.data import splits as S
     from cloth_segment.data.dedup import score_candidates
     from cloth_segment.paths import DATA, DATASETS
+
     return DATA, DATASETS, Image, S, mo, np, pd, plt, score_candidates
 
 
@@ -106,27 +107,37 @@ def _(DATA, DATASETS, S, manifest, meta, mo, pd, score_candidates):
 def _(cand, manifest, np):
     _ds = manifest.dataset.to_numpy()
     _src = manifest.source_split.to_numpy()
-    _outfit = np.array([i.split("-id_")[-1].split("-")[0] if d == "dfmm" else ""
-                        for d, i in zip(_ds, manifest.id)])
+    _outfit = np.array(
+        [i.split("-id_")[-1].split("-")[0] if d == "dfmm" else "" for d, i in zip(_ds, manifest.id)]
+    )
     a, b = cand.a.to_numpy(), cand.b.to_numpy()
     da, db = _ds[a], _ds[b]
     _dfmm_a, _dfmm_b = da == "dfmm", db == "dfmm"
     kind = np.select(
-        [_dfmm_a & _dfmm_b & (_outfit[a] == _outfit[b]),
-         _dfmm_a & _dfmm_b,
-         _dfmm_a | _dfmm_b],
+        [_dfmm_a & _dfmm_b & (_outfit[a] == _outfit[b]), _dfmm_a & _dfmm_b, _dfmm_a | _dfmm_b],
         ["DFMM, same outfit", "DFMM, different outfits", "DFMM vs LIP/CIHP"],
         default="LIP/CIHP",
     )
     _test_a = (da != "dfmm") & (_src[a] == "val")
     _test_b = (db != "dfmm") & (_src[b] == "val")
-    relation = np.select([_test_a & _test_b, _test_a ^ _test_b],
-                         ["both in test", "train vs test"], default="both in train pool")
+    relation = np.select(
+        [_test_a & _test_b, _test_a ^ _test_b],
+        ["both in test", "train vs test"],
+        default="both in train pool",
+    )
 
     def _name(i):
-        return manifest.dataset.to_numpy()[i] + " / " + manifest.source_split.to_numpy()[i] + " / " + manifest.id.to_numpy()[i]
+        return (
+            manifest.dataset.to_numpy()[i]
+            + " / "
+            + manifest.source_split.to_numpy()[i]
+            + " / "
+            + manifest.id.to_numpy()[i]
+        )
 
-    pairs = cand.assign(kind=kind, relation=relation, ds_a=da, ds_b=db, name_a=_name(a), name_b=_name(b))
+    pairs = cand.assign(
+        kind=kind, relation=relation, ds_a=da, ds_b=db, name_a=_name(a), name_b=_name(b)
+    )
     KINDS = ["LIP/CIHP", "DFMM, same outfit", "DFMM, different outfits", "DFMM vs LIP/CIHP"]
     RELATIONS = ["train vs test", "both in train pool", "both in test"]
     return KINDS, RELATIONS, pairs
@@ -172,29 +183,51 @@ def _(mo):
 
 @app.cell
 def _(S, mo):
-    t_main = mo.ui.slider(0.50, 1.00, step=0.01, value=S.CORR_MIN, show_value=True,
-                          label="Threshold for LIP/CIHP pairs")
-    t_dfmm = mo.ui.slider(0.80, 1.00, step=0.005, value=S.CORR_MIN_DFMM_PAIR, show_value=True,
-                          label="Threshold for pairs involving DFMM")
+    t_main = mo.ui.slider(
+        0.50,
+        1.00,
+        step=0.01,
+        value=S.CORR_MIN,
+        show_value=True,
+        label="Threshold for LIP/CIHP pairs",
+    )
+    t_dfmm = mo.ui.slider(
+        0.80,
+        1.00,
+        step=0.005,
+        value=S.CORR_MIN_DFMM_PAIR,
+        show_value=True,
+        label="Threshold for pairs involving DFMM",
+    )
     mo.hstack([t_main, t_dfmm], justify="start", gap=3)
     return t_dfmm, t_main
 
 
 @app.cell
 def _(S, pairs, t_dfmm, t_main):
-    accepted = S.duplicate_mask(pairs.ds_a.to_numpy(), pairs.ds_b.to_numpy(), pairs["corr"].to_numpy(),
-                                t_main.value, t_dfmm.value)
-    current = S.duplicate_mask(pairs.ds_a.to_numpy(), pairs.ds_b.to_numpy(), pairs["corr"].to_numpy())
+    accepted = S.duplicate_mask(
+        pairs.ds_a.to_numpy(),
+        pairs.ds_b.to_numpy(),
+        pairs["corr"].to_numpy(),
+        t_main.value,
+        t_dfmm.value,
+    )
+    current = S.duplicate_mask(
+        pairs.ds_a.to_numpy(), pairs.ds_b.to_numpy(), pairs["corr"].to_numpy()
+    )
     return accepted, current
 
 
 @app.cell
 def _(accepted, current, mo, pairs):
     _leaks = int((accepted & (pairs.relation == "train vs test").to_numpy()).sum())
-    mo.callout(mo.md(
-        f"With these thresholds, **{int(accepted.sum()):,}** of {len(pairs):,} candidate pairs are duplicates "
-        f"(built splits: {int(current.sum()):,}). **{_leaks:,}** of them link a non-test image to a test image."
-    ), kind="info")
+    mo.callout(
+        mo.md(
+            f"With these thresholds, **{int(accepted.sum()):,}** of {len(pairs):,} candidate pairs are duplicates "
+            f"(built splits: {int(current.sum()):,}). **{_leaks:,}** of them link a non-test image to a test image."
+        ),
+        kind="info",
+    )
     return
 
 
@@ -226,8 +259,12 @@ def _(KINDS, RELATIONS, np, pairs, plt, t_dfmm, t_main):
         for _rel in RELATIONS:
             _v = _p[_p.relation == _rel]["corr"]
             if len(_v):
-                _ax.hist(_v, bins=_bins, alpha=0.6, color=_colours[_rel], label=f"{_rel} ({len(_v):,})")
-        _ax.axvline(t_main.value if _k == "LIP/CIHP" else t_dfmm.value, ls="--", c="k", label="threshold")
+                _ax.hist(
+                    _v, bins=_bins, alpha=0.6, color=_colours[_rel], label=f"{_rel} ({len(_v):,})"
+                )
+        _ax.axvline(
+            t_main.value if _k == "LIP/CIHP" else t_dfmm.value, ls="--", c="k", label="threshold"
+        )
         _ax.set_yscale("log")
         _ax.set_title(f"{_k}: {len(_p):,} candidate pairs", fontsize=10)
         _ax.legend(fontsize=7, loc="upper left")
@@ -263,28 +300,45 @@ def _(mo):
 @app.cell
 def _(KINDS, S, accepted, current, manifest, mo, pairs, pd):
     _leak = (pairs.relation == "train vs test").to_numpy()
-    _tab = pd.DataFrame({
-        "candidate pairs": pairs.groupby("kind").size(),
-        "duplicates, built": pairs[current].groupby("kind").size(),
-        "duplicates, slider": pairs[accepted].groupby("kind").size(),
-        "train-vs-test duplicates, slider": pairs[accepted & _leak].groupby("kind").size(),
-    }).reindex(KINDS).fillna(0).astype(int).rename_axis("pair kind")
+    _tab = (
+        pd.DataFrame(
+            {
+                "candidate pairs": pairs.groupby("kind").size(),
+                "duplicates, built": pairs[current].groupby("kind").size(),
+                "duplicates, slider": pairs[accepted].groupby("kind").size(),
+                "train-vs-test duplicates, slider": pairs[accepted & _leak].groupby("kind").size(),
+            }
+        )
+        .reindex(KINDS)
+        .fillna(0)
+        .astype(int)
+        .rename_axis("pair kind")
+    )
 
     try:
         _g, _split, _reason = S.apply_rules(manifest, pairs.a[accepted], pairs.b[accepted])
         _order = ["train", "val", "test", "excluded"]
-        _new = pd.crosstab(manifest.dataset, pd.Series(_split, name="split")).reindex(columns=_order, fill_value=0)
+        _new = pd.crosstab(manifest.dataset, pd.Series(_split, name="split")).reindex(
+            columns=_order, fill_value=0
+        )
         _old = pd.crosstab(manifest.dataset, manifest.split).reindex(columns=_order, fill_value=0)
         _delta = (_new - _old).astype(int)
-        _impact = mo.hstack([
-            mo.vstack([mo.md("**Images per split at the slider values**"), _new]),
-            mo.vstack([mo.md("**Difference from the built splits**"), _delta]),
-        ], justify="start", gap=2)
+        _impact = mo.hstack(
+            [
+                mo.vstack([mo.md("**Images per split at the slider values**"), _new]),
+                mo.vstack([mo.md("**Difference from the built splits**"), _delta]),
+            ],
+            justify="start",
+            gap=2,
+        )
     except ValueError as e:
-        _impact = mo.callout(mo.md(
-            f"These thresholds would merge a DFMM outfit with LIP/CIHP training images, "
-            f"and there is no rule for which split such a group should go to:\n\n`{e}`"
-        ), kind="danger")
+        _impact = mo.callout(
+            mo.md(
+                f"These thresholds would merge a DFMM outfit with LIP/CIHP training images, "
+                f"and there is no rule for which split such a group should go to:\n\n`{e}`"
+            ),
+            kind="danger",
+        )
     mo.vstack([mo.md("**Pairs**"), _tab, _impact], gap=1)
     return
 
@@ -329,16 +383,26 @@ def _(mo):
 def _(KINDS, RELATIONS, mo):
     v_kind = mo.ui.dropdown(KINDS, value="LIP/CIHP", label="Pair kind")
     v_rel = mo.ui.dropdown(["any", *RELATIONS], value="any", label="Relation")
-    v_range = mo.ui.range_slider(-0.2, 1.0, step=0.005, value=[0.65, 0.75], show_value=True,
-                                 label="Correlation range")
-    v_order = mo.ui.dropdown({"random sample": "random", "lowest score first": "ascending",
-                              "highest score first": "descending"}, value="random sample", label="Order")
+    v_range = mo.ui.range_slider(
+        -0.2, 1.0, step=0.005, value=[0.65, 0.75], show_value=True, label="Correlation range"
+    )
+    v_order = mo.ui.dropdown(
+        {
+            "random sample": "random",
+            "lowest score first": "ascending",
+            "highest score first": "descending",
+        },
+        value="random sample",
+        label="Order",
+    )
     v_n = mo.ui.slider(6, 36, step=6, value=12, show_value=True, label="Pairs to show")
     v_seed = mo.ui.number(start=0, stop=10_000, value=0, label="Seed")
-    mo.vstack([
-        mo.hstack([v_kind, v_rel, v_order], justify="start", gap=2),
-        mo.hstack([v_range, v_n, v_seed], justify="start", gap=2),
-    ])
+    mo.vstack(
+        [
+            mo.hstack([v_kind, v_rel, v_order], justify="start", gap=2),
+            mo.hstack([v_range, v_n, v_seed], justify="start", gap=2),
+        ]
+    )
     return v_kind, v_n, v_order, v_range, v_rel, v_seed
 
 
@@ -377,15 +441,19 @@ def _(DATASETS, Image, manifest, mo, selected, shown):
         colour = "#c0392b" if r.dup else "#777"
         verdict = "duplicate" if r.dup else "not duplicate"
         mirrored = '<div style="font-size:11px">mirrored match</div>' if r.flip else ""
-        img = '<img src="{}" style="max-width:220px;max-height:220px;display:block;margin:4px auto">'
+        img = (
+            '<img src="{}" style="max-width:220px;max-height:220px;display:block;margin:4px auto">'
+        )
         cap = '<div style="font-size:11px;word-break:break-all;opacity:0.8">{}</div>'
         return (
             f'<div style="border:2px solid {colour};border-radius:6px;padding:6px;width:236px">'
             f'<div style="font-size:13px;font-weight:600;color:{colour}">{verdict}</div>'
             f'<div style="font-size:11px">correlation {r["corr"]:.3f} · hash distance {r.hash_dist}</div>'
             f"{mirrored}"
-            + img.format(_thumb(r.a, False)) + cap.format(_html.escape(r.name_a))
-            + img.format(_thumb(r.b, bool(r.flip))) + cap.format(_html.escape(r.name_b))
+            + img.format(_thumb(r.a, False))
+            + cap.format(_html.escape(r.name_a))
+            + img.format(_thumb(r.b, bool(r.flip)))
+            + cap.format(_html.escape(r.name_b))
             + "</div>"
         )
 
@@ -393,13 +461,20 @@ def _(DATASETS, Image, manifest, mo, selected, shown):
         _out = mo.md(f"No pairs in this range ({len(selected):,} match the other filters).")
     else:
         _n_dup = int(selected.dup.sum())
-        _grid = ('<div style="display:flex;flex-wrap:wrap;gap:10px">'
-                 + "".join(_card(r) for _, r in shown.iterrows()) + "</div>")
-        _out = mo.vstack([
-            mo.md(f"**{len(selected):,}** pairs match these filters ({_n_dup:,} duplicates at the slider "
-                  f"values, {len(selected) - _n_dup:,} not). Showing {len(shown)}."),
-            mo.Html(_grid),
-        ])
+        _grid = (
+            '<div style="display:flex;flex-wrap:wrap;gap:10px">'
+            + "".join(_card(r) for _, r in shown.iterrows())
+            + "</div>"
+        )
+        _out = mo.vstack(
+            [
+                mo.md(
+                    f"**{len(selected):,}** pairs match these filters ({_n_dup:,} duplicates at the slider "
+                    f"values, {len(selected) - _n_dup:,} not). Showing {len(shown)}."
+                ),
+                mo.Html(_grid),
+            ]
+        )
     _out
     return
 

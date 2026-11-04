@@ -48,14 +48,24 @@ def group_key(dataset: str, id_: str) -> str:
     raise ValueError(dataset)
 
 
-def is_duplicate(ds_a: str, ds_b: str, corr: float,
-                 corr_min: float = CORR_MIN, corr_min_dfmm: float = CORR_MIN_DFMM_PAIR) -> bool:
+def is_duplicate(
+    ds_a: str,
+    ds_b: str,
+    corr: float,
+    corr_min: float = CORR_MIN,
+    corr_min_dfmm: float = CORR_MIN_DFMM_PAIR,
+) -> bool:
     limit = corr_min_dfmm if "dfmm" in (ds_a, ds_b) else corr_min
     return corr >= limit
 
 
-def duplicate_mask(ds_a: np.ndarray, ds_b: np.ndarray, corr: np.ndarray,
-                   corr_min: float = CORR_MIN, corr_min_dfmm: float = CORR_MIN_DFMM_PAIR) -> np.ndarray:
+def duplicate_mask(
+    ds_a: np.ndarray,
+    ds_b: np.ndarray,
+    corr: np.ndarray,
+    corr_min: float = CORR_MIN,
+    corr_min_dfmm: float = CORR_MIN_DFMM_PAIR,
+) -> np.ndarray:
     """Vectorised is_duplicate over candidate pairs."""
     involves_dfmm = (ds_a == "dfmm") | (ds_b == "dfmm")
     return corr >= np.where(involves_dfmm, corr_min_dfmm, corr_min)
@@ -84,11 +94,20 @@ def unit_hash(key: str, seed: int = SEED) -> float:
     return int.from_bytes(h[:8], "big") / 2**64
 
 
-def assign(datasets: list[str], source_splits: list[str], groups: list[str],
-           empty: np.ndarray, seed: int = SEED) -> tuple[list[str], list[str]]:
+def assign(
+    datasets: list[str],
+    source_splits: list[str],
+    groups: list[str],
+    empty: np.ndarray,
+    seed: int = SEED,
+) -> tuple[list[str], list[str]]:
     """Return (split, exclude_reason) per row. `groups` are merged group roots."""
     n = len(datasets)
-    has_test = {g for g, ds, s in zip(groups, datasets, source_splits) if s == "val" and ds in ("lip", "cihp")}
+    has_test = {
+        g
+        for g, ds, s in zip(groups, datasets, source_splits)
+        if s == "val" and ds in ("lip", "cihp")
+    }
     mixed = {}
     for g, ds in zip(groups, datasets):
         mixed.setdefault(g, set()).add(ds == "dfmm")
@@ -100,7 +119,9 @@ def assign(datasets: list[str], source_splits: list[str], groups: list[str],
             split[i], reason[i] = "excluded", "leak_test"
         else:
             if len(mixed[g]) > 1:
-                raise ValueError(f"group {g} mixes DFMM and LIP/CIHP train images; no rule for that")
+                raise ValueError(
+                    f"group {g} mixes DFMM and LIP/CIHP train images; no rule for that"
+                )
             u = unit_hash(g, seed)
             t = TEST_FRAC.get(ds, 0.0)
             split[i] = "test" if u < t else "val" if u < t + VAL_FRAC[ds] else "train"
@@ -122,7 +143,9 @@ def apply_rules(df, dup_a, dup_b, seed: int = SEED):
     for i, j in zip(dup_a, dup_b):
         uf.union(base[i], base[j])
     groups = [uf.find(g) for g in base]
-    fg = [c for c in df.columns if c.startswith("c") and c[1:].isdigit() and c not in ("c0", "c255")]
+    fg = [
+        c for c in df.columns if c.startswith("c") and c[1:].isdigit() and c not in ("c0", "c255")
+    ]
     empty = (df[fg].sum(axis=1) == 0).to_numpy()
     split, reason = assign(list(df.dataset), list(df.source_split), groups, empty, seed)
     return groups, split, reason
@@ -140,5 +163,7 @@ def load_manifest(version: str = SPLIT_VERSION):
     if not (root / "DONE").exists():
         raise FileNotFoundError(f"{root} is not built; run scripts/build_splits.py")
     meta = json.loads((root / "meta.json").read_text())
-    df = pd.read_csv(root / "manifest.csv", keep_default_na=False, dtype={"id": str, "exclude_reason": str})
+    df = pd.read_csv(
+        root / "manifest.csv", keep_default_na=False, dtype={"id": str, "exclude_reason": str}
+    )
     return df, meta

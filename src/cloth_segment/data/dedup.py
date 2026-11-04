@@ -16,7 +16,9 @@ from PIL import Image
 
 def dhash(img: Image.Image, size: int = 8) -> np.ndarray:
     """Return the dHash as a packed uint8 array of size²/8 bytes."""
-    g = np.asarray(img.convert("L").resize((size + 1, size), Image.Resampling.LANCZOS), dtype=np.int16)
+    g = np.asarray(
+        img.convert("L").resize((size + 1, size), Image.Resampling.LANCZOS), dtype=np.int16
+    )
     return np.packbits(g[:, 1:] > g[:, :-1])
 
 
@@ -33,8 +35,9 @@ def to_u64(packed: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(packed).view(">u8").ravel().astype(np.uint64)
 
 
-def near_pairs(a: np.ndarray, b: np.ndarray | None = None, max_dist: int = 4,
-               chunk: int = 2048) -> np.ndarray:
+def near_pairs(
+    a: np.ndarray, b: np.ndarray | None = None, max_dist: int = 4, chunk: int = 2048
+) -> np.ndarray:
     """Index pairs (i, j) with Hamming(a[i], b[j]) <= max_dist, as a K×3 array (i, j, dist).
 
     `a` and `b` are uint64 hash vectors. With b=None, compares a to itself and
@@ -44,7 +47,7 @@ def near_pairs(a: np.ndarray, b: np.ndarray | None = None, max_dist: int = 4,
     b = a if same else b
     out = []
     for s in range(0, len(a), chunk):
-        d = np.bitwise_count(a[s:s + chunk, None] ^ b[None, :])
+        d = np.bitwise_count(a[s : s + chunk, None] ^ b[None, :])
         i, j = np.nonzero(d <= max_dist)
         i += s
         if same:
@@ -58,14 +61,18 @@ def thumbnail(path: Path, size: int = 32) -> np.ndarray:
     """size×size grayscale thumbnail (aspect ignored), for verifying hash candidates."""
     with Image.open(path) as im:
         im.draft("L", (4 * size, 4 * size))
-        return np.asarray(im.convert("L").resize((size, size), Image.Resampling.BILINEAR), dtype=np.uint8)
+        return np.asarray(
+            im.convert("L").resize((size, size), Image.Resampling.BILINEAR), dtype=np.uint8
+        )
 
 
 def thumb_corr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Pearson correlation between matching rows of two N×H×W thumbnail stacks."""
+
     def norm(x):
         x = x.reshape(len(x), -1).astype(np.float32)
         return (x - x.mean(1, keepdims=True)) / (x.std(1, keepdims=True) + 1e-3)
+
     return (norm(a) * norm(b)).mean(1)
 
 
@@ -93,11 +100,25 @@ def score_candidates(paths: list[Path], max_dist: int, workers: int = 16):
     plain = near_pairs(h, max_dist=max_dist)
     flip = near_pairs(h, hf, max_dist=max_dist)
     flip = flip[flip[:, 0] != flip[:, 1]]
-    cand = pd.concat([
-        pd.DataFrame({"a": plain[:, 0], "b": plain[:, 1], "hash_dist": plain[:, 2], "flip": False}),
-        pd.DataFrame({"a": flip[:, :2].min(1), "b": flip[:, :2].max(1), "hash_dist": flip[:, 2], "flip": True}),
-    ], ignore_index=True)
+    cand = pd.concat(
+        [
+            pd.DataFrame(
+                {"a": plain[:, 0], "b": plain[:, 1], "hash_dist": plain[:, 2], "flip": False}
+            ),
+            pd.DataFrame(
+                {
+                    "a": flip[:, :2].min(1),
+                    "b": flip[:, :2].max(1),
+                    "hash_dist": flip[:, 2],
+                    "flip": True,
+                }
+            ),
+        ],
+        ignore_index=True,
+    )
     tb = thumbs[cand.b.to_numpy()]
     tb = np.where(cand.flip.to_numpy()[:, None, None], tb[:, :, ::-1], tb)
     cand["corr"] = thumb_corr(thumbs[cand.a.to_numpy()], tb)
-    return cand.sort_values("corr", ascending=False).drop_duplicates(["a", "b"]).reset_index(drop=True)
+    return (
+        cand.sort_values("corr", ascending=False).drop_duplicates(["a", "b"]).reset_index(drop=True)
+    )

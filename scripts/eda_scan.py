@@ -28,11 +28,21 @@ EXIF_ORIENTATION = 0x0112
 
 def scan_pair(args: tuple[Pair, int]) -> dict:
     pair, n_values = args
-    row = {"dataset": pair.dataset, "split": pair.split, "id": pair.id, "error": "", "unexpected": ""}
+    row = {
+        "dataset": pair.dataset,
+        "split": pair.split,
+        "id": pair.id,
+        "error": "",
+        "unexpected": "",
+    }
     try:
         with Image.open(pair.image) as im:
-            row.update(img_w=im.width, img_h=im.height, img_mode=im.mode,
-                       exif_orient=im.getexif().get(EXIF_ORIENTATION, ""))
+            row.update(
+                img_w=im.width,
+                img_h=im.height,
+                img_mode=im.mode,
+                exif_orient=im.getexif().get(EXIF_ORIENTATION, ""),
+            )
             im.load()
         with Image.open(pair.mask) as m:
             row.update(mask_w=m.width, mask_h=m.height, mask_mode=m.mode)
@@ -52,8 +62,20 @@ def scan_pair(args: tuple[Pair, int]) -> dict:
 def scan_dataset(dataset: str, workers: int) -> None:
     n_values = max(RAW_LABELS[dataset]) + 1
     pairs = [p for s in SPLITS[dataset] for p in list_pairs(dataset, s)]
-    cols = ["dataset", "split", "id", "img_w", "img_h", "img_mode", "exif_orient",
-            "mask_w", "mask_h", "mask_mode", "error", "unexpected"] + [f"v{v}" for v in range(n_values)]
+    cols = [
+        "dataset",
+        "split",
+        "id",
+        "img_w",
+        "img_h",
+        "img_mode",
+        "exif_orient",
+        "mask_w",
+        "mask_h",
+        "mask_mode",
+        "error",
+        "unexpected",
+    ] + [f"v{v}" for v in range(n_values)]
     OUT.mkdir(parents=True, exist_ok=True)
     tmp = OUT / f".scan_{dataset}.csv.tmp"
     with ProcessPoolExecutor(workers) as ex, tmp.open("w", newline="") as f:
