@@ -26,25 +26,27 @@ Never commit datasets, checkpoints or run outputs.
 
 ## 2. Workflow
 
-1. **Claim a task.** Pick a `todo` row in `docs/PLAN.md` whose dependencies are
-   done, set it to `doing`, and merge that one-line change first (small PR, or
-   ask the reviewer to merge it directly). Do not claim a task that is already
-   `doing`.
+1. **Pick a task.** Choose a `todo` row in `docs/PLAN.md` whose dependencies
+   are done. Tell the team (chat, not Git) that you take it, so nobody else
+   starts the same task. Do not take a task that is already `doing`.
 2. **Branch** from an up-to-date `main`: `<task-id>/<slug>`, e.g.
-   `T4/dataloader`. One task per branch. Never commit to `main`.
+   `T4/dataloader`. One task per branch, one PR per task. Never commit to
+   `main`. Make your first commit `plan: start T4`, which only sets the task
+   to `doing` in `PLAN.md`.
 3. **Commit** early and often, using conventional prefixes: `feat:`, `fix:`,
    `refactor:`, `test:`, `docs:`, `plan:`, `chore:`. Write the subject in the
    imperative; explain *why* in the body when it is not obvious.
 4. **Open a PR** into `main` using the template. Keep it small and focused. Run
    the checks in section 3 first: there is no CI, so the author is the CI.
+   Before you ask for review, add the handoff note (section 6) and set the
+   task to `done` in `PLAN.md` (a `plan: finish T4` commit). If the review
+   asks for big changes, set it back to `doing` until they are done.
 5. **Review.** The maintainer reviews every PR. Address comments with new
    commits (do not force-push over a review in progress). PRs are merged with
    a **merge commit**, so every commit on your branch stays in `main`'s history
    (this keeps the commit hash in a run's folder name, D7, reachable). Because
    all commits are kept, make them meaningful: tidy "wip" or "oops" commits
    before asking for review (see `docs/conventions.md`).
-6. **Finish.** After merge: set the task to `done` in `PLAN.md` (own small
-   `plan:` commit) and add a handoff note (section 6).
 
 Each member works in their own clone. Do not edit files in someone else's
 clone, or in shared storage by hand.
@@ -115,7 +117,8 @@ them. Being understood matters more than polished English.
 
 ## 6. Handoff notes
 
-When you finish a task (or stop mid-way), add
+Add the handoff note in the same PR as the work, on your task branch (also
+when you stop mid-way: push the branch with the note). Create
 `docs/handoffs/<yyyy-mm-dd>-<task>-<name>.md` from
 [`docs/handoffs/TEMPLATE.md`](docs/handoffs/TEMPLATE.md). Put findings, results,
 gotchas and open questions there, not in `PLAN.md`. Start with the three-line

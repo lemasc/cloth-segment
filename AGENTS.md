@@ -52,9 +52,17 @@ in (Thai or English). Keep identifiers, config keys, branch names and commit
 subjects in English. Use short plain sentences and explain a term the first
 time; the readers may not be fluent in the language used.
 
+## Starting a task
+
+Branch `<task-id>/<slug>`. Make the first commit `plan: start <task-id>`
+(task to `doing` in `PLAN.md`, nothing else).
+
 ## Finishing a task
+
+Everything below goes in the same PR as the work.
 
 1. Run ruff and pytest; paste the result in the PR.
 2. Add `docs/handoffs/<date>-<task>-<name>.md` from `docs/handoffs/TEMPLATE.md`.
-3. Open the PR with the template filled in (tick the agent box). Stay within the
+3. Set the task to `done` in `PLAN.md` (`plan: finish <task-id>` commit).
+4. Open the PR with the template filled in (tick the agent box). Stay within the
    task: list scope creep in the PR as follow-ups instead of doing it.
