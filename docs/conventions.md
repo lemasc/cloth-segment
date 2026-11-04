@@ -44,7 +44,12 @@ the surrounding code.
 
 - Conventional prefixes: `feat fix refactor test docs plan chore`.
 - One task per PR; reformatting-only changes go in their own commit.
-- Squash-merge: the PR title becomes the commit subject, so write it well.
+- PRs are merged with a merge commit; the branch commits stay in history, so
+  each one should be a coherent step with a clear subject. Before review, fold
+  throwaway commits ("wip", "fix typo") into the commit they belong to
+  (`git commit --amend`, or `git rebase -i` if you are comfortable with it).
+  After review starts, add commits instead of rewriting.
+- The PR title becomes the merge commit subject, so write it well.
 
 ## Dependencies
 

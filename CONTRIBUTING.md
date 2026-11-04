@@ -38,8 +38,11 @@ Never commit datasets, checkpoints or run outputs.
 4. **Open a PR** into `main` using the template. Keep it small and focused. Run
    the checks in section 3 first: there is no CI, so the author is the CI.
 5. **Review.** The maintainer reviews every PR. Address comments with new
-   commits (do not force-push over a review in progress). PRs are
-   **squash-merged**.
+   commits (do not force-push over a review in progress). PRs are merged with
+   a **merge commit**, so every commit on your branch stays in `main`'s history
+   (this keeps the commit hash in a run's folder name, D7, reachable). Because
+   all commits are kept, make them meaningful: tidy "wip" or "oops" commits
+   before asking for review (see `docs/conventions.md`).
 6. **Finish.** After merge: set the task to `done` in `PLAN.md` (own small
    `plan:` commit) and add a handoff note (section 6).
 
