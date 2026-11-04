@@ -11,7 +11,9 @@ Session notes: [`docs/handoffs/`](docs/handoffs/).
 
 ```bash
 uv sync
-scripts/setup_links.sh          # datasets/, data/, runs/ -> /shared/deeplearn/cloth
+# datasets/, data/, runs/ must exist: either your own folders/symlinks, or on the
+# team machine:  scripts/setup_links.sh   (-> /shared/deeplearn/cloth)
+uv run pre-commit install       # ruff + safety hooks, once per clone
 uv run pytest
 ```
 
@@ -24,7 +26,7 @@ src/cloth_segment/
   runs.py      run naming, config hashing, locks, registry
   train.py     python -m cloth_segment.train <config.yaml>
   evaluate.py  python -m cloth_segment.evaluate <run> <test_set>
-  paths.py     repo / shared-mount paths
+  paths.py     repo / data / runs paths
 configs/       base.yaml + one YAML per experiment
 scripts/       CLI helpers (setup_links.sh, ...)
 notebooks/
@@ -34,10 +36,13 @@ tests/
 docs/          PLAN.md, handoffs/, reports/
 ```
 
-`datasets/`, `data/` and `runs/` are gitignored symlinks into the shared mount.
+`datasets/`, `data/` and `runs/` are gitignored folders or symlinks (shared storage on the team machine, local disk elsewhere).
 
 ## Working conventions
 
+Full rules: [`CONTRIBUTING.md`](CONTRIBUTING.md) (workflow, review, shared contracts),
+[`docs/conventions.md`](docs/conventions.md) (code), [`AGENTS.md`](AGENTS.md) (coding agents).
+
 - Commit before launching any run you might keep (the run name includes the commit).
-- Long runs: launch from a terminal (tmux), not a notebook kernel.
+- Long runs: launch from a terminal (tmux), not a notebook kernel. On a shared GPU, take the lock.
 - Mark a task `doing` in `docs/PLAN.md` when you start it, and push.

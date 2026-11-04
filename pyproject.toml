@@ -50,5 +50,26 @@ explicit = true
 [dependency-groups]
 dev = [
     "marimo>=0.25.2",
+    "nbstripout>=0.9.1",
+    "pre-commit>=4.7.0",
     "pytest>=9.2.0",
+    "ruff>=0.17.3",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["datasets", "data", "runs"]
+
+[tool.ruff.lint]
+# E/F: pycodestyle + pyflakes, I: import sorting, B: bugbear, UP: pyupgrade,
+# NPY: numpy pitfalls, SIM: simplifications
+select = ["E", "F", "I", "B", "UP", "NPY", "SIM"]
+ignore = ["B905"]  # zip(strict=) is too noisy for this codebase
+
+[tool.ruff.lint.per-file-ignores]
+# marimo notebooks redefine names across cells by design
+"notebooks/**/*.py" = ["F811", "B018", "E402", "E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

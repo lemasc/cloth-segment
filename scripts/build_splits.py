@@ -25,13 +25,18 @@ import hashlib
 import json
 import os
 import shutil
+
 import pandas as pd
 
 from cloth_segment.data import splits as S
 from cloth_segment.data.dedup import score_candidates
 from cloth_segment.data.labels import IGNORE, LABEL_VERSION, NUM_CLASSES, label_hash
 from cloth_segment.data.sources import (
-    DFMM_ATTRS, MISSING_ATTR, SPLITS, list_pairs, load_dfmm_attributes,
+    DFMM_ATTRS,
+    MISSING_ATTR,
+    SPLITS,
+    list_pairs,
+    load_dfmm_attributes,
 )
 from cloth_segment.paths import DATA, DATASETS
 
@@ -43,7 +48,9 @@ COUNT_COLS = [f"c{i}" for i in range(NUM_CLASSES)] + [f"c{IGNORE}"]
 def find_duplicates(df: pd.DataFrame, paths: list, workers: int) -> pd.DataFrame:
     cand = score_candidates(paths, S.HASH_MAX_DIST, workers)
     ds = df.dataset.to_numpy()
-    dup = cand[S.duplicate_mask(ds[cand.a], ds[cand.b], cand["corr"].to_numpy())].reset_index(drop=True)
+    dup = cand[S.duplicate_mask(ds[cand.a], ds[cand.b], cand["corr"].to_numpy())].reset_index(
+        drop=True
+    )
     print(f"  {len(cand)} hash candidates -> {len(dup)} duplicates", flush=True)
     for side in ("a", "b"):
         for col in ("dataset", "source_split", "id"):
@@ -58,16 +65,23 @@ def build(workers: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         raise SystemExit(f"{MASKS} was built with a different label mapping; bump LABEL_VERSION")
 
     pairs = [p for ds, ss in SPLITS.items() for s in ss for p in list_pairs(ds, s)]
-    df = pd.DataFrame({
-        "dataset": [p.dataset for p in pairs],
-        "source_split": [p.split for p in pairs],
-        "id": [p.id for p in pairs],
-        "image": [str(p.image.relative_to(DATASETS)) for p in pairs],
-        "mask": [f"masks/{LABEL_VERSION}/{p.dataset}/{p.split}/{p.id}.png" for p in pairs],
-    })
+    df = pd.DataFrame(
+        {
+            "dataset": [p.dataset for p in pairs],
+            "source_split": [p.split for p in pairs],
+            "id": [p.id for p in pairs],
+            "image": [str(p.image.relative_to(DATASETS)) for p in pairs],
+            "mask": [f"masks/{LABEL_VERSION}/{p.dataset}/{p.split}/{p.id}.png" for p in pairs],
+        }
+    )
     stats = pd.read_csv(MASKS / "stats.csv", keep_default_na=False, dtype={"id": str})
-    df = df.merge(stats, left_on=["dataset", "source_split", "id"], right_on=["dataset", "split", "id"],
-                  how="left", validate="one_to_one").drop(columns="split")
+    df = df.merge(
+        stats,
+        left_on=["dataset", "source_split", "id"],
+        right_on=["dataset", "split", "id"],
+        how="left",
+        validate="one_to_one",
+    ).drop(columns="split")
     if df.h.isna().any():
         raise SystemExit("some pairs have no entry in masks stats.csv")
 
@@ -79,8 +93,20 @@ def build(workers: int) -> tuple[pd.DataFrame, pd.DataFrame]:
     df.loc[df.dataset != "dfmm", list(DFMM_ATTRS)] = MISSING_ATTR
     df[list(DFMM_ATTRS)] = df[list(DFMM_ATTRS)].fillna(MISSING_ATTR).astype(int)
 
-    cols = ["dataset", "source_split", "id", "split", "exclude_reason", "group", "image", "mask",
-            "h", "w", *COUNT_COLS, *DFMM_ATTRS]
+    cols = [
+        "dataset",
+        "source_split",
+        "id",
+        "split",
+        "exclude_reason",
+        "group",
+        "image",
+        "mask",
+        "h",
+        "w",
+        *COUNT_COLS,
+        *DFMM_ATTRS,
+    ]
     return df[cols], dup.drop(columns=["a", "b"])
 
 
@@ -107,11 +133,18 @@ def main() -> None:
     data_version = f"{S.SPLIT_VERSION}-{sha[:12]}"
 
     if OUT.exists():
-        old = json.loads((OUT / "meta.json").read_text()).get("data_version") if (OUT / "DONE").exists() else None
+        old = (
+            json.loads((OUT / "meta.json").read_text()).get("data_version")
+            if (OUT / "DONE").exists()
+            else None
+        )
         if old == data_version:
             print(f"{OUT} is up to date ({data_version}); nothing to do.")
             return
-        raise SystemExit(f"{OUT} exists as {old}, new build is {data_version}: bump SPLIT_VERSION instead of overwriting.")
+        raise SystemExit(
+            f"{OUT} exists as {old}, new build is {data_version}: "
+            "bump SPLIT_VERSION instead of overwriting."
+        )
 
     counts = df.groupby(["dataset", "split"]).size().unstack(fill_value=0)
     reasons = df[df.split == "excluded"].groupby(["dataset", "exclude_reason"]).size()
@@ -123,8 +156,12 @@ def main() -> None:
         "seed": S.SEED,
         "val_frac": S.VAL_FRAC,
         "test_frac": S.TEST_FRAC,
-        "duplicate_rule": {"hash": "dhash64 (+mirrored)", "hash_max_dist": S.HASH_MAX_DIST,
-                           "corr_min": S.CORR_MIN, "corr_min_dfmm_pair": S.CORR_MIN_DFMM_PAIR},
+        "duplicate_rule": {
+            "hash": "dhash64 (+mirrored)",
+            "hash_max_dist": S.HASH_MAX_DIST,
+            "corr_min": S.CORR_MIN,
+            "corr_min_dfmm_pair": S.CORR_MIN_DFMM_PAIR,
+        },
         "counts": {ds: row.to_dict() for ds, row in counts.iterrows()},
         "excluded": {f"{d}/{r}": int(n) for (d, r), n in reasons.items()},
         "duplicate_pairs": len(dup),

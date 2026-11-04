@@ -2,8 +2,14 @@ import numpy as np
 import pytest
 
 from cloth_segment.data.labels import (
-    IGNORE, MAPPING, NUM_CLASSES, SHARED_CLASSES, UnknownLabelError,
-    colorize, convert, label_hash,
+    IGNORE,
+    MAPPING,
+    NUM_CLASSES,
+    SHARED_CLASSES,
+    UnknownLabelError,
+    colorize,
+    convert,
+    label_hash,
 )
 from cloth_segment.data.sources import RAW_LABELS
 
@@ -27,18 +33,21 @@ def test_every_shared_class_is_used_by_every_dataset():
         assert set(range(NUM_CLASSES)) <= set(m.values()), ds
 
 
-@pytest.mark.parametrize("ds,raw,expected", [
-    ("lip", "jumpsuits", "dress"),
-    ("cihp", "torso_skin", "skin"),
-    ("lip", "socks", "footwear"),
-    ("cihp", "left_arm", "skin"),
-    ("dfmm", "leggings", "footwear"),
-    ("dfmm", "socks", "footwear"),
-    ("dfmm", "rompers", "dress"),
-    ("dfmm", "belt", "ignore"),
-    ("dfmm", "bag", "ignore"),
-    ("dfmm", "ring", "ignore"),
-])
+@pytest.mark.parametrize(
+    "ds,raw,expected",
+    [
+        ("lip", "jumpsuits", "dress"),
+        ("cihp", "torso_skin", "skin"),
+        ("lip", "socks", "footwear"),
+        ("cihp", "left_arm", "skin"),
+        ("dfmm", "leggings", "footwear"),
+        ("dfmm", "socks", "footwear"),
+        ("dfmm", "rompers", "dress"),
+        ("dfmm", "belt", "ignore"),
+        ("dfmm", "bag", "ignore"),
+        ("dfmm", "ring", "ignore"),
+    ],
+)
 def test_decisions(ds, raw, expected):
     assert name_of(ds, raw) == expected
 
@@ -50,7 +59,9 @@ def test_left_right_merged(ds):
 
 
 def test_convert_maps_values_and_keeps_shape():
-    raw = np.array([[0, 14, 15], [10, 6, 12]], dtype=np.uint8)  # bg, face, skin; belt, leggings, bag
+    raw = np.array(
+        [[0, 14, 15], [10, 6, 12]], dtype=np.uint8
+    )  # bg, face, skin; belt, leggings, bag
     out = convert(raw, "dfmm")
     assert out.dtype == np.uint8 and out.shape == raw.shape
     s = SHARED_CLASSES.index

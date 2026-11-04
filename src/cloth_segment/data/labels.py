@@ -23,8 +23,18 @@ from cloth_segment.data.sources import RAW_LABELS
 LABEL_VERSION = "labels-v1"
 
 SHARED_CLASSES: tuple[str, ...] = (
-    "background", "hair", "face", "skin", "upper", "outer", "dress",
-    "skirt", "pants", "footwear", "headwear", "accessory",
+    "background",
+    "hair",
+    "face",
+    "skin",
+    "upper",
+    "outer",
+    "dress",
+    "skirt",
+    "pants",
+    "footwear",
+    "headwear",
+    "accessory",
 )
 NUM_CLASSES = len(SHARED_CLASSES)
 IGNORE = 255
@@ -32,18 +42,18 @@ IGNORE_NAME = "ignore"
 
 # Display colours (RGB) for overlays and figures; index = shared class ID.
 PALETTE: tuple[tuple[int, int, int], ...] = (
-    (0, 0, 0),        # background
-    (128, 64, 0),     # hair
+    (0, 0, 0),  # background
+    (128, 64, 0),  # hair
     (255, 200, 150),  # face
     (230, 140, 100),  # skin
-    (220, 30, 30),    # upper
-    (30, 90, 220),    # outer
-    (200, 40, 200),   # dress
-    (255, 160, 0),    # skirt
-    (30, 160, 60),    # pants
-    (90, 90, 90),     # footwear
-    (0, 200, 200),    # headwear
-    (240, 240, 0),    # accessory
+    (220, 30, 30),  # upper
+    (30, 90, 220),  # outer
+    (200, 40, 200),  # dress
+    (255, 160, 0),  # skirt
+    (30, 160, 60),  # pants
+    (90, 90, 90),  # footwear
+    (0, 200, 200),  # headwear
+    (240, 240, 0),  # accessory
 )
 IGNORE_COLOR = (255, 255, 255)
 
@@ -80,17 +90,17 @@ MAPPING_BY_NAME: dict[str, dict[str, str]] = {
         "skirt": "skirt",
         "dress": "dress",
         "pants": "pants",
-        "leggings": "footwear",       # T1: knee/thigh-high socks and tights, like LIP/CIHP socks
+        "leggings": "footwear",  # T1: knee/thigh-high socks and tights, like LIP/CIHP socks
         "headwear": "headwear",
         "eyeglass": "accessory",
         "neckwear": "accessory",
-        "belt": IGNORE_NAME,          # T1: no belt class in LIP/CIHP (labelled as garment there)
+        "belt": IGNORE_NAME,  # T1: no belt class in LIP/CIHP (labelled as garment there)
         "footwear": "footwear",
-        "bag": IGNORE_NAME,           # no bag class in LIP/CIHP (labelled as background there)
+        "bag": IGNORE_NAME,  # no bag class in LIP/CIHP (labelled as background there)
         "hair": "hair",
         "face": "face",
         "skin": "skin",
-        "ring": IGNORE_NAME,          # jewellery: tiny, no LIP/CIHP counterpart
+        "ring": IGNORE_NAME,  # jewellery: tiny, no LIP/CIHP counterpart
         "wrist_wearing": IGNORE_NAME,
         "socks": "footwear",
         "gloves": "accessory",

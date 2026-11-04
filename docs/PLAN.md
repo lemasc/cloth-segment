@@ -33,7 +33,7 @@ multi-task = 4 pts, see E1).
 | D5 | Fair comparison: same data, splits, input resolution, augmentation, iteration budget and pretrained (ImageNet) encoders across all models. |
 | D6 | Python source for library, training and evaluation; one YAML config per experiment. Marimo for EDA; Jupyter (outputs committed) for analysis. Long runs are launched from a terminal, not a notebook kernel. |
 | D7 | Runs live on the shared mount, one folder each, named `<datetime>-<commit>-<slug>` and set at run start. The resolved config hash (+ data version) in `meta.json` is the cache key: a finished run with the same hash is never retrained. |
-| D8 | Preprocessing tiers. Dataset construction and evaluation protocol are frozen and versioned (not experiments). Training-time input (resolution, augmentation, sampling) is config, so it is part of the run hash. |
+| D8 | Preprocessing tiers. Dataset construction and evaluation protocol are versioned shared contracts, not experiments. Each is frozen once its freeze condition is met (status table in `CONTRIBUTING.md` section 4); until then changes are allowed but must be declared and version-bumped. Training-time input (resolution, augmentation, sampling) is config, so it is part of the run hash. |
 | D9 | Shared machine: one Linux user and git clone per member; data and runs on a shared group-writable mount; one GPU, so training needs a GPU lock. |
 
 ## Tasks

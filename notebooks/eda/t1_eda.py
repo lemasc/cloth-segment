@@ -7,19 +7,35 @@ app = marimo.App(width="medium")
 @app.cell
 def _():
     import marimo as mo
+    import matplotlib.pyplot as plt
     import numpy as np
     import pandas as pd
-    import matplotlib.pyplot as plt
     from PIL import Image
 
     from cloth_segment.data.sources import (
-        RAW_LABELS, SPLITS, dataset_root, dfmm_outfit_id, list_pairs,
+        RAW_LABELS,
+        SPLITS,
+        dataset_root,
+        dfmm_outfit_id,
+        list_pairs,
     )
     from cloth_segment.paths import DATA
 
     DATASETS = list(SPLITS)
-    return (DATA, DATASETS, Image, RAW_LABELS, SPLITS, dataset_root,
-            dfmm_outfit_id, list_pairs, mo, np, pd, plt)
+    return (
+        DATA,
+        DATASETS,
+        Image,
+        RAW_LABELS,
+        SPLITS,
+        dataset_root,
+        dfmm_outfit_id,
+        list_pairs,
+        mo,
+        np,
+        pd,
+        plt,
+    )
 
 
 @app.cell
@@ -41,9 +57,18 @@ def _(mo):
 @app.cell
 def _(DATA, DATASETS, mo, pd):
     _missing = [d for d in DATASETS if not (DATA / "eda" / f"scan_{d}.csv").exists()]
-    mo.stop(bool(_missing), mo.md(f"Missing scans for {_missing}. Run `uv run python scripts/eda_scan.py`."))
-    scans = {d: pd.read_csv(DATA / "eda" / f"scan_{d}.csv", keep_default_na=False,
-                            dtype={"id": str, "exif_orient": str}) for d in DATASETS}
+    mo.stop(
+        bool(_missing),
+        mo.md(f"Missing scans for {_missing}. Run `uv run python scripts/eda_scan.py`."),
+    )
+    scans = {
+        d: pd.read_csv(
+            DATA / "eda" / f"scan_{d}.csv",
+            keep_default_na=False,
+            dtype={"id": str, "exif_orient": str},
+        )
+        for d in DATASETS
+    }
     return (scans,)
 
 
@@ -60,30 +85,39 @@ def _(pd, scans):
     def _integrity(df):
         v = [c for c in df.columns if c.startswith("v")]
         ok = df[df.error == ""]
-        return pd.Series({
-            "pairs": len(df),
-            "errors": (df.error != "").sum(),
-            "size_mismatch": ((ok.img_w != ok.mask_w) | (ok.img_h != ok.mask_h)).sum(),
-            "exif_rotated": (~ok.exif_orient.isin(["", "1"])).sum(),
-            "img_modes": ", ".join(f"{k}:{n}" for k, n in ok.img_mode.value_counts().items()),
-            "mask_modes": ", ".join(f"{k}:{n}" for k, n in ok.mask_mode.value_counts().items()),
-            "unexpected_values": (ok.unexpected != "").sum(),
-            "all_background": (ok[v[1:]].sum(axis=1) == 0).sum(),
-        })
+        return pd.Series(
+            {
+                "pairs": len(df),
+                "errors": (df.error != "").sum(),
+                "size_mismatch": ((ok.img_w != ok.mask_w) | (ok.img_h != ok.mask_h)).sum(),
+                "exif_rotated": (~ok.exif_orient.isin(["", "1"])).sum(),
+                "img_modes": ", ".join(f"{k}:{n}" for k, n in ok.img_mode.value_counts().items()),
+                "mask_modes": ", ".join(f"{k}:{n}" for k, n in ok.mask_mode.value_counts().items()),
+                "unexpected_values": (ok.unexpected != "").sum(),
+                "all_background": (ok[v[1:]].sum(axis=1) == 0).sum(),
+            }
+        )
 
-    integrity = pd.DataFrame({
-        f"{d}/{s}": _integrity(g) for d, df in scans.items() for s, g in df.groupby("split")
-    }).T
+    integrity = pd.DataFrame(
+        {f"{d}/{s}": _integrity(g) for d, df in scans.items() for s, g in df.groupby("split")}
+    ).T
     integrity
     return (integrity,)
 
 
 @app.cell
 def _(mo, pd, scans):
-    _bad = pd.concat([
-        df[(df.error != "") | (df.unexpected != "") | (df.img_w != df.mask_w) | (df.img_h != df.mask_h)]
-        for df in scans.values()
-    ])[["dataset", "split", "id", "img_w", "img_h", "mask_w", "mask_h", "error", "unexpected"]]
+    _bad = pd.concat(
+        [
+            df[
+                (df.error != "")
+                | (df.unexpected != "")
+                | (df.img_w != df.mask_w)
+                | (df.img_h != df.mask_h)
+            ]
+            for df in scans.values()
+        ]
+    )[["dataset", "split", "id", "img_w", "img_h", "mask_w", "mask_h", "error", "unexpected"]]
     mo.vstack([mo.md(f"**Problem pairs: {len(_bad)}**"), mo.ui.table(_bad, page_size=10)])
     return
 
@@ -107,7 +141,9 @@ def _(pd, plt, scans):
         _ax.set_xlabel(_t)
         _ax.legend()
     _fig.tight_layout()
-    sizes = pd.DataFrame({d: df[["img_h", "img_w"]].describe().stack() for d, df in scans.items()}).T.round(0)
+    sizes = pd.DataFrame(
+        {d: df[["img_h", "img_w"]].describe().stack() for d, df in scans.items()}
+    ).T.round(0)
     _fig
     return (sizes,)
 
@@ -136,12 +172,15 @@ def _(RAW_LABELS, pd, scans):
         df = df[df.error == ""]
         cols = [f"v{k}" for k in RAW_LABELS[d]]
         px = df[cols].sum()
-        return pd.DataFrame({
-            "name": list(RAW_LABELS[d].values()),
-            "pixel %": (100 * px / px.sum()).values,
-            "image %": (100 * (df[cols] > 0).mean()).values,
-            "images": (df[cols] > 0).sum().values,
-        }, index=pd.Index(list(RAW_LABELS[d]), name="id"))
+        return pd.DataFrame(
+            {
+                "name": list(RAW_LABELS[d].values()),
+                "pixel %": (100 * px / px.sum()).values,
+                "image %": (100 * (df[cols] > 0).mean()).values,
+                "images": (df[cols] > 0).sum().values,
+            },
+            index=pd.Index(list(RAW_LABELS[d]), name="id"),
+        )
 
     raw = {d: raw_stats(d) for d in scans}
     return (raw,)
@@ -149,7 +188,12 @@ def _(RAW_LABELS, pd, scans):
 
 @app.cell
 def _(mo, raw):
-    mo.ui.tabs({d: mo.ui.table(t.round(3).reset_index(), page_size=25, selection=None) for d, t in raw.items()})
+    mo.ui.tabs(
+        {
+            d: mo.ui.table(t.round(3).reset_index(), page_size=25, selection=None)
+            for d, t in raw.items()
+        }
+    )
     return
 
 
@@ -176,7 +220,9 @@ def _():
 @app.cell
 def _(DRAFT_MAP, IGNORE, RAW_LABELS, SHARED, pd, plt, scans):
     for _d in scans:
-        assert set(DRAFT_MAP[_d]) == set(RAW_LABELS[_d]), f"{_d}: draft map does not cover every raw id"
+        assert set(DRAFT_MAP[_d]) == set(RAW_LABELS[_d]), (
+            f"{_d}: draft map does not cover every raw id"
+        )
 
     def shared_px(d):
         df = scans[d][scans[d].error == ""]
@@ -205,10 +251,12 @@ def _(DRAFT_MAP, IGNORE, RAW_LABELS, SHARED, pd, plt, scans):
 
 @app.cell
 def _(mo, shared_image, shared_pixel):
-    mo.hstack([
-        mo.vstack([mo.md("**pixel %**"), shared_pixel.round(3)]),
-        mo.vstack([mo.md("**image %**"), shared_image.round(1)]),
-    ])
+    mo.hstack(
+        [
+            mo.vstack([mo.md("**pixel %**"), shared_pixel.round(3)]),
+            mo.vstack([mo.md("**image %**"), shared_image.round(1)]),
+        ]
+    )
     return
 
 
@@ -233,8 +281,11 @@ def _(DATASETS, mo):
 
 @app.cell
 def _(RAW_LABELS, mo, view_ds):
-    view_cls = mo.ui.dropdown({f"{k} {n}": k for k, n in RAW_LABELS[view_ds.value].items()},
-                              value=f"10 {RAW_LABELS[view_ds.value][10]}", label="raw class")
+    view_cls = mo.ui.dropdown(
+        {f"{k} {n}": k for k, n in RAW_LABELS[view_ds.value].items()},
+        value=f"10 {RAW_LABELS[view_ds.value][10]}",
+        label="raw class",
+    )
     view_seed = mo.ui.number(start=0, stop=10_000, value=0, label="seed")
     view_min = mo.ui.slider(0, 5, value=0, step=0.1, label="min class pixel % of image")
     mo.hstack([view_cls, view_seed, view_min], justify="start")
@@ -258,7 +309,9 @@ def _(Image, SPLITS, list_pairs, np, plt, scans, view_cls, view_ds, view_min, vi
         _p = _pairs[(_r.split, _r.id)]
         _img = np.asarray(Image.open(_p.image).convert("RGB")) / 255
         _m = np.asarray(Image.open(_p.mask))
-        _axes[0, _i].imshow(np.where((_m == _k)[..., None], 0.5 * _img + 0.5 * np.array([1, 0, 0]), _img))
+        _axes[0, _i].imshow(
+            np.where((_m == _k)[..., None], 0.5 * _img + 0.5 * np.array([1, 0, 0]), _img)
+        )
         _axes[0, _i].set_title(f"{_r.id[:18]}\n{_share[_r.name]:.1f}%", fontsize=7)
         _axes[1, _i].imshow(_m, cmap=_cmap, vmin=0, vmax=23, interpolation="nearest")
     for _ax in _axes.ravel():
@@ -287,12 +340,14 @@ def _(dfmm_outfit_id, pd, plt, scans):
     _ax.set_ylabel("outfits")
     _fig.tight_layout()
     _cats = scans["dfmm"].id.str.split("-id_").str[0].groupby(_ids).nunique()
-    dfmm_groups = pd.Series({
-        "masked images": len(_ids),
-        "outfits": _ids.nunique(),
-        "outfits with >1 masked image": (outfit_sizes > 1).sum(),
-        "ids listed under >1 category": (_cats > 1).sum(),
-    })
+    dfmm_groups = pd.Series(
+        {
+            "masked images": len(_ids),
+            "outfits": _ids.nunique(),
+            "outfits with >1 masked image": (outfit_sizes > 1).sum(),
+            "ids listed under >1 category": (_cats > 1).sum(),
+        }
+    )
     _fig
     return (dfmm_groups,)
 
@@ -322,17 +377,34 @@ def _(dataset_root, pd):
     }
     _fab = ["denim", "cotton", "leather", "furry", "knitted", "chiffon", "other", "NA"]
     _pat = ["floral", "graphic", "striped", "pure", "lattice", "other", "color_block", "NA"]
-    TEXTURE = {f"{kind}_{part}": names for kind, names in (("fabric", _fab), ("pattern", _pat))
-               for part in ("upper", "lower", "outer")}
+    TEXTURE = {
+        f"{kind}_{part}": names
+        for kind, names in (("fabric", _fab), ("pattern", _pat))
+        for part in ("upper", "lower", "outer")
+    }
 
     def _read(path, cols):
         df = pd.read_csv(path, sep=r"\s+", header=None, names=["file", *cols])
         df["id"] = df.file.str.removesuffix(".jpg")
         return df.drop(columns="file").set_index("id")
 
-    attrs = _read(_root / "shape/shape_anno_all.txt", list(SHAPE)).join(
-        _read(_root / "texture/fabric_ann.txt", [f"fabric_{p}" for p in ("upper", "lower", "outer")]), how="outer"
-    ).join(_read(_root / "texture/pattern_ann.txt", [f"pattern_{p}" for p in ("upper", "lower", "outer")]), how="outer")
+    attrs = (
+        _read(_root / "shape/shape_anno_all.txt", list(SHAPE))
+        .join(
+            _read(
+                _root / "texture/fabric_ann.txt",
+                [f"fabric_{p}" for p in ("upper", "lower", "outer")],
+            ),
+            how="outer",
+        )
+        .join(
+            _read(
+                _root / "texture/pattern_ann.txt",
+                [f"pattern_{p}" for p in ("upper", "lower", "outer")],
+            ),
+            how="outer",
+        )
+    )
     ATTR_NAMES = {**SHAPE, **TEXTURE}
     return ATTR_NAMES, attrs
 
@@ -341,13 +413,19 @@ def _(dataset_root, pd):
 def _(attrs, pd, scans):
     _masked = set(scans["dfmm"].id)
     _a = attrs.index
-    attr_coverage = pd.Series({
-        "images with any attribute": len(_a),
-        "masked images": len(_masked),
-        "masked with shape labels": attrs.loc[attrs.index.isin(_masked), "sleeve"].notna().sum(),
-        "masked with fabric labels": attrs.loc[attrs.index.isin(_masked), "fabric_upper"].notna().sum(),
-        "masked without any attribute": len(_masked - set(_a)),
-    })
+    attr_coverage = pd.Series(
+        {
+            "images with any attribute": len(_a),
+            "masked images": len(_masked),
+            "masked with shape labels": attrs.loc[attrs.index.isin(_masked), "sleeve"]
+            .notna()
+            .sum(),
+            "masked with fabric labels": attrs.loc[attrs.index.isin(_masked), "fabric_upper"]
+            .notna()
+            .sum(),
+            "masked without any attribute": len(_masked - set(_a)),
+        }
+    )
     attr_coverage
     return
 
@@ -359,15 +437,26 @@ def _(ATTR_NAMES, attrs, mo, pd, scans):
     for _col, _names in ATTR_NAMES.items():
         _vc = _m[_col].dropna().astype(int).value_counts()
         for _v, _name in enumerate(_names):
-            _rows.append({"attribute": _col, "value": _v, "name": _name, "count": int(_vc.get(_v, 0)),
-                          "%": round(100 * _vc.get(_v, 0) / max(_vc.sum(), 1), 1)})
+            _rows.append(
+                {
+                    "attribute": _col,
+                    "value": _v,
+                    "name": _name,
+                    "count": int(_vc.get(_v, 0)),
+                    "%": round(100 * _vc.get(_v, 0) / max(_vc.sum(), 1), 1),
+                }
+            )
     attr_dist = pd.DataFrame(_rows)
     _na = attr_dist[attr_dist.name == "NA"].set_index("attribute")["%"].rename("NA %")
-    mo.vstack([
-        mo.md("Attribute distribution on **masked** DFMM images (the E1 pool). NA = part not visible."),
-        _na.to_frame().T,
-        mo.ui.table(attr_dist, page_size=20, selection=None),
-    ])
+    mo.vstack(
+        [
+            mo.md(
+                "Attribute distribution on **masked** DFMM images (the E1 pool). NA = part not visible."
+            ),
+            _na.to_frame().T,
+            mo.ui.table(attr_dist, page_size=20, selection=None),
+        ]
+    )
     return (attr_dist,)
 
 

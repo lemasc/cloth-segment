@@ -1,8 +1,8 @@
-"""Repo and shared-mount paths.
+"""Repo, data and run paths.
 
-`datasets/`, `data/` and `runs/` are per-clone symlinks into the shared mount,
-created by `scripts/setup_links.sh`. Code should use these constants and never
-hard-code `/shared/...`.
+`datasets/`, `data/` and `runs/` are per-clone folders or symlinks (to shared
+storage via `scripts/setup_links.sh`, or to local disk). Code should use these
+constants and never hard-code absolute paths.
 """
 
 from pathlib import Path

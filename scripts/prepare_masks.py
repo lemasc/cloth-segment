@@ -28,7 +28,12 @@ import numpy as np
 from PIL import Image
 
 from cloth_segment.data.labels import (
-    IGNORE, LABEL_VERSION, NUM_CLASSES, convert, label_hash, label_spec,
+    IGNORE,
+    LABEL_VERSION,
+    NUM_CLASSES,
+    convert,
+    label_hash,
+    label_spec,
 )
 from cloth_segment.data.sources import SPLITS, Pair, list_pairs
 from cloth_segment.paths import DATA
@@ -50,8 +55,13 @@ def convert_pair(args: tuple[Pair, Path]) -> dict:
     dst = root / pair.dataset / pair.split / f"{pair.id}.png"
     Image.fromarray(shared, mode="L").save(dst)
     counts = np.bincount(shared.ravel(), minlength=256)
-    row = {"dataset": pair.dataset, "split": pair.split, "id": pair.id,
-           "h": shared.shape[0], "w": shared.shape[1]}
+    row = {
+        "dataset": pair.dataset,
+        "split": pair.split,
+        "id": pair.id,
+        "h": shared.shape[0],
+        "w": shared.shape[1],
+    }
     row.update({f"c{i}": int(counts[i]) for i in range(NUM_CLASSES)})
     row[f"c{IGNORE}"] = int(counts[IGNORE])
     return row
