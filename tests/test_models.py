@@ -2,9 +2,10 @@
 
 import pytest
 import torch
+import yaml
 from torch import nn
 
-from cloth_segment import models
+from cloth_segment import models, paths
 from cloth_segment.data.labels import NUM_CLASSES
 from cloth_segment.models import build_model, count_parameters, register
 from cloth_segment.models.wrappers import PadToMultiple
@@ -85,6 +86,35 @@ def test_build_model_unknown_key_raises(toy_model):
 def test_register_rejects_duplicate(toy_model):
     with pytest.raises(ValueError, match="already registered"):
         register(toy_model)(lambda: nn.Identity())
+
+
+@pytest.fixture(scope="module")
+def unet():
+    m = build_model({"model": {"name": "unet_r34", "pretrained": False}})
+    return m.eval()
+
+
+@pytest.mark.parametrize("shape", [(2, 3, 64, 96), (1, 3, 100, 75), (1, 3, 33, 47)])
+def test_unet_r34_output_shape(unet, shape):
+    with torch.no_grad():
+        out = unet(torch.randn(shape))
+    assert out.shape == (shape[0], NUM_CLASSES, *shape[2:])
+    assert out.dtype == torch.float32
+
+
+def test_unet_r34_returns_logits_not_probabilities(unet):
+    with torch.no_grad():
+        out = unet(torch.randn(1, 3, 64, 64))
+    assert not torch.allclose(out.softmax(1).sum(1), out.sum(1))
+
+
+def test_unet_r34_config():
+    cfg = yaml.safe_load((paths.CONFIGS / "unet_r34.yaml").read_text())
+    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert cfg["model"]["name"] == "unet_r34"
+    assert cfg["model"]["pretrained"] is True
+    cfg["model"]["pretrained"] = False  # no download in tests
+    assert isinstance(build_model(cfg), nn.Module)
 
 
 def test_count_parameters_trainable_only():

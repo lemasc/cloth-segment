@@ -50,3 +50,4 @@ def count_parameters(model: nn.Module, trainable_only: bool = False) -> int:
 
 
 # Model modules register themselves on import (T6: unet, T7: deeplab, T8: segformer).
+from cloth_segment.models import unet  # noqa: E402, F401  (import registers the builder)
