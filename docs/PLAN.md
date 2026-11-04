@@ -71,4 +71,4 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | ID | Task | Status |
 |---|---|---|
 | M1 | D4 empty-mask rule for test sets (PR #3) | done |
-| M2 | Size and shape filter for LIP/CIHP/DFMM, `splits-v2` | todo |
+| M2 | Size and shape filter for LIP/CIHP/DFMM, `splits-v2` | doing |
