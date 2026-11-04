@@ -6,7 +6,7 @@ batch 8, 40k iteration, AdamW, CE และ bf16 อยู่ใน `configs/bas
 เพราะยังไม่มีโมเดลตัวจริง ขั้นต่อไปคือ T6–T8 ลงทะเบียนโมเดลแล้วรัน baseline
 
 ## Summary
-PR: (ใส่ลิงก์หลังเปิด PR) · branch `T5/train-eval-pipeline`
+PR: #9 (https://github.com/lemasc/cloth-segment/pull/9) · branch `T5/train-eval-pipeline`
 
 - **วิธีใช้:**
   ```bash
