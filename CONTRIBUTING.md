@@ -29,6 +29,10 @@ Never commit datasets, checkpoints or run outputs.
 1. **Pick a task.** Choose a `todo` row in `docs/PLAN.md` whose dependencies
    are done. Tell the team (chat, not Git) that you take it, so nobody else
    starts the same task. Do not take a task that is already `doing`.
+   `M` rows (maintenance) are decisions or data fixes that are not
+   deliverables, for example a change to a D row or a split filter. They work
+   like any task: one ID per branch and PR, a handoff, and a status in
+   `PLAN.md`.
 2. **Branch** from an up-to-date `main`: `<task-id>/<slug>`, e.g.
    `T4/dataloader`. One task per branch, one PR per task. Never commit to
    `main`. Make your first commit `plan: start T4`, which only sets the task
