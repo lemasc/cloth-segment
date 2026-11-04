@@ -2,6 +2,12 @@
 
 Copy to `docs/handoffs/<yyyy-mm-dd>-<task>-<name>.md`.
 
+Thai or English, whichever you prefer (see CONTRIBUTING section 5).
+
+## In plain words
+Three lines at most: what you did, what you found, what happens next. A
+teammate who reads only this should understand the outcome.
+
 ## Summary
 What was done, in a few lines. Link the PR.
 

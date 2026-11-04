@@ -41,7 +41,7 @@ Never commit datasets, checkpoints or run outputs.
    commits (do not force-push over a review in progress). PRs are
    **squash-merged**.
 6. **Finish.** After merge: set the task to `done` in `PLAN.md` (own small
-   `plan:` commit) and add a handoff note (section 5).
+   `plan:` commit) and add a handoff note (section 6).
 
 Each member works in their own clone. Do not edit files in someone else's
 clone, or in shared storage by hand.
@@ -93,14 +93,34 @@ number, frozen or not.
 Changing a decision (a D row) or the scope table is the maintainer's call. Open
 an issue or a PR that proposes it; do not just edit the row.
 
-## 5. Handoff notes
+## 5. Language and writing
+
+Write in whichever of **Thai or English** you understand best. Handoffs, PR
+descriptions, review comments and issues may be in either, and you may mix
+them. Being understood matters more than polished English.
+
+- **Always English:** code identifiers, config keys, file and branch names, and
+  commit subjects. Tools, agents and `git log` searches depend on it.
+- Code comments and docstrings may be in either language; stay consistent
+  within a file.
+- Write plainly: short sentences, define a term the first time you use it, put
+  numbers in tables, and say what you did before why.
+- If you cannot follow a document, say so in the PR or an issue. That is a bug
+  in the document, not in you.
+- Reviewer and agent replies follow the language of the person they are
+  answering.
+
+## 6. Handoff notes
 
 When you finish a task (or stop mid-way), add
 `docs/handoffs/<yyyy-mm-dd>-<task>-<name>.md` from
 [`docs/handoffs/TEMPLATE.md`](docs/handoffs/TEMPLATE.md). Put findings, results,
-gotchas and open questions there, not in `PLAN.md`.
+gotchas and open questions there, not in `PLAN.md`. Start with the three-line
+"In plain words" section: a teammate should understand the outcome from it
+alone. Reports in `docs/reports/` follow the same rules and are written for
+readers who have not seen the code.
 
-## 6. Experiments and hardware
+## 7. Experiments and hardware
 
 - One YAML config per experiment. The resolved config hash is the cache key
   (D7): never retrain a finished run with the same hash, never edit a finished
@@ -117,7 +137,7 @@ gotchas and open questions there, not in `PLAN.md`.
   quote both. Small numeric differences across GPUs are expected. The
   maintainer decides which runs are reported.
 
-## 7. Notebooks
+## 8. Notebooks
 
 - EDA: marimo (`notebooks/eda/*.py`). Analysis: Jupyter (`notebooks/analysis/`),
   **outputs committed**; the hooks keep them and only strip volatile metadata.
@@ -125,13 +145,13 @@ gotchas and open questions there, not in `PLAN.md`.
   notebook should stay well under 5 MB; the hook blocks bigger files.
 - Reusable logic belongs in `src/`, not in a notebook.
 
-## 8. Never commit
+## 9. Never commit
 
 Datasets, images, masks, checkpoints, run outputs, credentials, `.env` files,
 or anything over 5 MB. Check dataset licences before sharing any sample
 outside the team.
 
-## 9. Working with coding agents
+## 10. Working with coding agents
 
 Agents are welcome and may open PRs on your behalf. You stay responsible for
 what is merged.

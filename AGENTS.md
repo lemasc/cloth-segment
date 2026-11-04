@@ -45,6 +45,13 @@ uv run python -m cloth_segment.train configs/<experiment>.yaml
 - Ruff is enforced by pre-commit; fix what it reports, do not silence it.
 - Jupyter notebooks keep their outputs. Do not clear them.
 
+## Language
+
+Reply and write handoffs, PR text and comments in the language the user writes
+in (Thai or English). Keep identifiers, config keys, branch names and commit
+subjects in English. Use short plain sentences and explain a term the first
+time; the readers may not be fluent in the language used.
+
 ## Finishing a task
 
 1. Run ruff and pytest; paste the result in the PR.
