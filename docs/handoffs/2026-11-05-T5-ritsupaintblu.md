@@ -28,8 +28,10 @@ PR: #9 (https://github.com/lemasc/cloth-segment/pull/9) · branch `T5/train-eval
     step ของ checkpoint, commit) ถ้าไฟล์มีอยู่แล้วจะไม่เขียนทับ
 - `src/cloth_segment/runs.py`: จัดการ config และ run (merge, hash, โฟลเดอร์ run, cache, GPU lock)
   และเพิ่ม shared field ใหม่ (ดูหัวข้อถัดไป)
-- `src/cloth_segment/models/__init__.py`: `register` / `build_model(cfg)` / `MODELS` ก๊อปจาก PR #7 (T6)
-  มาทั้งไฟล์ ยกเว้นบรรทัดที่ import `unet` เพื่อให้ T5 ใช้ interface เดียวกับ T6
+- `src/cloth_segment/models/__init__.py`: T5 เป็นเจ้าของ interface ของโมเดล:
+  `@register("<name>")`, `build_model(model_cfg)` และ `REGISTRY` โมเดลรับภาพ (B, 3, S, S)
+  และคืน logits (B, NUM_CLASSES, h, w) โดย h, w เล็กกว่า S ได้ (SegFormer ให้ 1/4)
+  แล้ว `logits_at` จะขยายให้เท่ากัน
 - `scripts/probe_memory.py` + `src/cloth_segment/probe.py`: วัดหน่วยความจำและความเร็ว
   ผลอยู่ใน `docs/reports/2026-11-05-T5-gpu-probe.md`
 - Test ของ T5 อยู่ใน `tests/test_train.py`, `test_evaluate.py`, `test_runs.py`, `test_metrics.py`
@@ -47,7 +49,8 @@ PR: #9 (https://github.com/lemasc/cloth-segment/pull/9) · branch `T5/train-eval
 - **Shared field ใหม่** (เปลี่ยนต้องประกาศใน `run.overrides_shared`): `train.amp`, `optim.name`,
   `optim.weight_decay`, `optim.betas`, `optim.warmup_iters`, `optim.poly_power`, `loss`, `eval`
 - **`run.num_workers` และ `run.log_every` ไม่นับเข้า hash** เพราะไม่เปลี่ยนผล
-- **ใช้ interface registry ของ T6:** PR #7 ทำไว้ก่อนแล้ว ถ้าทำแยกกันจะชนกันตอน merge
+- **T5 กำหนด interface registry เอง:** T5 merge ก่อน แล้ว T6–T8 ปรับตาม ไม่ก๊อปจาก PR #7
+  ที่ยังเป็น draft
 - **วัดผลบน test ทั้ง 3 ชุดเสมอ** แม้ run จะเทรนแค่ dataset เดียว ตาราง cross-dataset ของ E2
   จึงไม่ต้องรันอะไรเพิ่ม
 
@@ -74,7 +77,8 @@ PR: #9 (https://github.com/lemasc/cloth-segment/pull/9) · branch `T5/train-eval
 - **ทีมต้องตกลงกันเรื่อง LR ต่อโมเดล** ก่อนรัน baseline
 - **Freeze contract:** หลัง PR นี้ merge และมี baseline แรกที่ทีมตกลงกัน maintainer freeze ได้ทั้ง
   "Evaluation protocol" และ "Shared comparison fields"
-- **PR #7 (T6):** ถ้า merge ทีหลัง PR นี้จะชนกันที่ `models/__init__.py` ให้ใช้ไฟล์ของ T6 ทั้งไฟล์
+- **PR #7 (T6):** หลัง PR นี้ merge ให้ #7 merge `main` เข้ามา ใช้ `models/__init__.py` ของ T5
+  แล้วปรับ builder ของ `unet` ให้รับ `model` config dict (`build_model(model_cfg)`)
 
 ## Next
 - **T6–T8:** ลงทะเบียนโมเดลด้วย `@register(...)` แล้วรัน `python -m cloth_segment.train configs/<model>.yaml`
