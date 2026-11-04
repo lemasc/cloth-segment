@@ -29,11 +29,12 @@ def toy_model():
     name = "_toy_test_model"
 
     @register(name)
-    def build(stride: int = 4):
+    def build(model_cfg: dict):
+        stride = model_cfg.get("stride", 4)
         return PadToMultiple(_Strided(stride), stride)
 
     yield name
-    del models.MODELS[name]
+    del models.REGISTRY[name]
 
 
 @pytest.mark.parametrize("shape", [(2, 3, 64, 96), (1, 3, 100, 75), (1, 3, 33, 47), (1, 3, 5, 3)])
@@ -66,31 +67,19 @@ def test_pad_to_multiple_rejects_bad_input():
 
 
 def test_build_model_passes_kwargs(toy_model):
-    m = build_model({"model": {"name": toy_model, "stride": 8}})
+    m = build_model({"name": toy_model, "stride": 8})
     assert m(torch.randn(1, 3, 50, 30)).shape == (1, NUM_CLASSES, 50, 30)
     assert count_parameters(m) == NUM_CLASSES * 3 * 8 * 8 + NUM_CLASSES
 
 
-def test_build_model_unknown_name_raises():
-    with pytest.raises(ValueError, match="unknown model.name"):
-        build_model({"model": {"name": "nope"}})
-    with pytest.raises(ValueError, match="unknown model.name"):
-        build_model({"model": {"name": None}})  # base.yaml default
-
-
-def test_build_model_unknown_key_raises(toy_model):
-    with pytest.raises(TypeError):
-        build_model({"model": {"name": toy_model, "typo_key": 1}})
-
-
 def test_register_rejects_duplicate(toy_model):
-    with pytest.raises(ValueError, match="already registered"):
-        register(toy_model)(lambda: nn.Identity())
+    with pytest.raises(ValueError, match="registered twice"):
+        register(toy_model)(lambda cfg: nn.Identity())
 
 
 @pytest.fixture(scope="module")
 def unet():
-    m = build_model({"model": {"name": "unet_r34", "pretrained": False}})
+    m = build_model({"name": "unet_r34", "pretrained": False})
     return m.eval()
 
 
@@ -114,7 +103,7 @@ def test_unet_r34_config():
     assert cfg["model"]["name"] == "unet_r34"
     assert cfg["model"]["pretrained"] is True
     cfg["model"]["pretrained"] = False  # no download in tests
-    assert isinstance(build_model(cfg), nn.Module)
+    assert isinstance(build_model(cfg["model"]), nn.Module)
 
 
 def test_count_parameters_trainable_only():

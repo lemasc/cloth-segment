@@ -47,8 +47,8 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T1 | EDA of LIP, CIHP, DFMM (sizes, class distribution, samples, label conflicts) | done |
 | T2 | Shared label set and per-dataset converters | done |
 | T3 | Splits and manifest (group split for DFMM, duplicate check across datasets) | done |
-| T4 | Data loader (segmentation + DFMM attributes) and augmentation | todo |
-| T5 | Training and evaluation pipeline (config-driven, shared by all models) | todo |
+| T4 | Data loader (segmentation + DFMM attributes) and augmentation | done |
+| T5 | Training and evaluation pipeline (config-driven, shared by all models) | done |
 | T6 | Model A: U-Net (ResNet-34) | doing |
 | T7 | Model B: DeepLabV3+ (ResNet-50) | todo |
 | T8 | Model C: SegFormer-B2 | todo |

@@ -1,13 +1,49 @@
 # Shared defaults. Experiment configs override these.
 # Every resolved field is part of the run hash (D7), so keep it explicit.
-# Values are placeholders until T4/T5.
+# data / input / augment are shared comparison fields (D5): model configs must
+# not change them.
 seed: 0
 
 data:
-  version: null        # set by T2/T3 data preparation
+  version: splits-v2-d023252b81d9   # data_version in data/splits/splits-v2/meta.json
   datasets: [lip, cihp, dfmm]
+  sampling: natural                 # natural (concat, ~41/43/16%) | balanced (equal per dataset)
+
+input:
+  size: 512                         # square training/eval input; multiple of 32
+
+augment:                            # train split only; eval = resize long side + pad
+  scale: [0.5, 2.0]                 # long side = size * U(scale), then random size x size window
+  hflip: 0.5                        # safe: left/right classes are merged (T2)
+  brightness: 0.2
+  contrast: 0.2
+  saturation: 0.2
+  hue: 0.0
 
 model:
   name: null           # unet_r34 | deeplabv3p_r50 | segformer_b2
 
-train: {}
+train:                 # shared comparison fields (D5): same for every model
+  batch_size: 8        # largest that fits SegFormer-B2 at 512 on the 12 GB GPU (T5 probe)
+  iters: 40000         # optimizer steps, about 5 epochs of the 62,500 train images
+  amp: bf16            # bf16 | fp16 | none; the T5 probe measured batch 8 with AMP on
+
+optim:                 # AdamW for every model (D5); lr may be set per model (not shared)
+  name: adamw
+  lr: 1.0e-4           # untuned default (the probe used it); model configs may override
+  weight_decay: 0.01
+  betas: [0.9, 0.999]
+  warmup_iters: 1500   # linear warmup from lr/warmup_iters to lr
+  poly_power: 1.0      # then lr * (1 - progress) ** power down to 0 at train.iters
+
+loss:
+  name: ce             # cross-entropy, IGNORE pixels skipped; E3 compares ce + dice
+
+eval:                  # validation during training (internal val split, never test, D4)
+  split: val
+  every: 4000          # iterations; also always at the last iteration
+  select: miou         # checkpoint kept as best.pt = highest val mIoU (eval-v1)
+
+run:                   # not hashed: names and runtime settings that do not change results
+  num_workers: 8       # T4 loader: ~256 img/s at 8 workers
+  log_every: 50        # iterations between train-loss log lines

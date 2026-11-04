@@ -81,9 +81,9 @@ set only by the maintainer in this table:
 
 | Contract | Where | Status | Freeze when |
 |---|---|---|---|
-| Label set and converters | `data/labels.py`, `prepare_masks.py` | open | T4 loader merged and reviewed |
-| Splits and manifest | `data/splits.py`, `dedup.py`, `build_splits.py` | open | T4 merged; duplicate thresholds reviewed |
-| Evaluation protocol and metrics | `evaluate.py` | open | T5 merged; metrics tested |
+| Label set and converters | `data/labels.py`, `prepare_masks.py` | frozen | T4 loader merged and reviewed |
+| Splits and manifest | `data/splits.py`, `dedup.py`, `build_splits.py` | frozen | T4 merged; duplicate thresholds reviewed |
+| Evaluation protocol and metrics | `evaluate.py` | frozen | T5 merged; metrics tested |
 | Shared comparison fields (D5) | `configs/base.yaml` | open | T5 merged; first baseline run agreed |
 
 **While a contract is `open`:** changes are allowed through a normal PR, but the

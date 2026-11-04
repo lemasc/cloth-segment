@@ -14,8 +14,12 @@ OUTPUT_STRIDE = 32
 
 
 @register("unet_r34")
-def build_unet_r34(pretrained: bool = True) -> nn.Module:
-    """U-Net R34 returning raw logits [B, NUM_CLASSES, H, W] for any input H×W."""
+def build_unet_r34(model_cfg: dict) -> nn.Module:
+    """U-Net R34 returning raw logits [B, NUM_CLASSES, H, W] for any input H×W.
+
+    `model_cfg` keys: `name`, and `pretrained` (default true: ImageNet weights).
+    """
+    pretrained = model_cfg.get("pretrained", True)
     net = smp.Unet(
         encoder_name="resnet34",
         encoder_weights="imagenet" if pretrained else None,
