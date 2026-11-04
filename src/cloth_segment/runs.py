@@ -2,7 +2,8 @@
 
 - Config = `configs/base.yaml` deep-merged with one experiment YAML. The
   experiment may not change shared comparison fields (D5) unless it lists
-  them under `run.overrides_shared` (e.g. E2 changes `data.datasets`).
+  them under `run.overrides_shared`, by the name in `SHARED_FIELDS` (e.g. E2
+  changes `data.datasets`, so it lists `data`: the whole section is one field).
   `optim.lr` is deliberately not shared: each model may set its own.
 - `config_hash` = sha256 of the resolved config as canonical JSON, without the
   `run` section (slug, notes, workers, logging: names and runtime settings

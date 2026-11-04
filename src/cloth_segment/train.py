@@ -156,6 +156,7 @@ def fit(
     best = {"step": None, "miou": -math.inf}
     t0 = t_log = time.perf_counter()
     loss_sum, loss_n = 0.0, 0
+    eval_seconds = 0.0
     batches = forever(loader)
 
     for step in range(1, iters + 1):
@@ -188,11 +189,13 @@ def fit(
             loss_sum, loss_n, t_log = 0.0, 0, now
 
         if step in checks:
+            t_eval = time.perf_counter()
             cm = evaluate.predict_confusion(model, val_loader, device, dtype)
             model.train()
             s = evaluate.scores(cm, SHARED_CLASSES)
             log.write(step=step, split=cfg["eval"]["split"], **s)
-            print(f"step {step} val mIoU {s['miou']:.4f}", flush=True)
+            miou = "undefined" if s["miou"] is None else f"{s['miou']:.4f}"
+            print(f"step {step} val mIoU {miou}", flush=True)
             torch.save(
                 {
                     "step": step,
@@ -207,12 +210,17 @@ def fit(
                 best = {"step": step, "miou": s["miou"]}
                 torch.save({"step": step, "model": model.state_dict()}, ckpt / "best.pt")
             t_log = time.perf_counter()  # do not count eval time as train time
+            eval_seconds += t_log - t_eval
 
+    if best["step"] is None:
+        raise RuntimeError("no best.pt: val mIoU was undefined at every check (val has no labels?)")
+    total = time.perf_counter() - t0
     return {
         "steps": iters,
         "best_step": best["step"],
-        "best_val_miou": best["miou"] if best["step"] is not None else None,
-        "train_seconds": round(time.perf_counter() - t0, 1),
+        "best_val_miou": best["miou"],
+        "train_seconds": round(total - eval_seconds, 1),  # without validation
+        "eval_seconds": round(eval_seconds, 1),
     }
 
 

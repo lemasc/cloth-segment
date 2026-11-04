@@ -169,3 +169,82 @@ def test_eval_loader_rejects_train_dataset(tmp_path):
     ds = SegDataset(df, size=64, train=True, image_root=ir, mask_root=mr)
     with pytest.raises(ValueError, match="train=False"):
         evaluate.WithOriginalMask(ds)
+
+
+# --- fit(): timing and the no-best.pt failure ----------------------------------------
+
+
+class _Tiny(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv = nn.Conv2d(3, NUM_CLASSES, 1)
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+def _fit_cfg(iters: int) -> dict:
+    return {
+        "seed": 0,
+        "data": {"sampling": "natural"},
+        "train": {"batch_size": 2, "iters": iters, "amp": "none"},
+        "optim": {
+            "name": "adamw",
+            "lr": 1e-3,
+            "weight_decay": 0.0,
+            "betas": [0.9, 0.999],
+            "warmup_iters": 1,
+            "poly_power": 1.0,
+        },
+        "loss": {"name": "ce"},
+        "eval": {"split": "val", "every": 2, "select": "miou"},
+        "run": {"num_workers": 0, "log_every": 1},
+    }
+
+
+def _fit_sets(tmp_path):
+    specs = [("lip", "train", 64, 64, True)] * 4 + [("lip", "val", 64, 64, False)] * 2
+    df, ir, mr = _write_fixture(tmp_path, specs)
+    train = df[df.split == "train"]
+    val = df[df.split == "val"]
+    kw = {"size": 64, "image_root": ir, "mask_root": mr}
+    return SegDataset(train, train=True, **kw), SegDataset(val, train=False, **kw)
+
+
+def test_fit_reports_train_and_eval_seconds_separately(tmp_path):
+    from cloth_segment.train import fit
+
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    train_set, val_set = _fit_sets(tmp_path)
+    out = fit(
+        _fit_cfg(2),
+        run_dir,
+        torch.device("cpu"),
+        model=_Tiny(),
+        train_set=train_set,
+        val_set=val_set,
+    )
+    assert out["best_step"] == 2 and out["best_val_miou"] is not None
+    assert out["eval_seconds"] >= 0 and out["train_seconds"] >= 0
+    assert (run_dir / "ckpt" / "best.pt").exists()
+
+
+def test_fit_fails_clearly_when_val_miou_is_never_defined(tmp_path, monkeypatch):
+    from cloth_segment import train
+
+    monkeypatch.setattr(
+        train.evaluate, "scores", lambda cm, names: {"miou": None, "eval_version": "x"}
+    )
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    train_set, val_set = _fit_sets(tmp_path)
+    with pytest.raises(RuntimeError, match="no best.pt"):
+        train.fit(
+            _fit_cfg(2),
+            run_dir,
+            torch.device("cpu"),
+            model=_Tiny(),
+            train_set=train_set,
+            val_set=val_set,
+        )
