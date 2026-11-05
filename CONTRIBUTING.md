@@ -33,6 +33,14 @@ Never commit datasets, checkpoints or run outputs.
    deliverables, for example a change to a D row or a split filter. They work
    like any task: one ID per branch and PR, a handoff, and a status in
    `PLAN.md`.
+   `X` rows (experiments) are training or evaluation runs: one run, its
+   config, its run folder and its report. The T row that implements the model
+   only covers code, config and tests. The run is a separate X row, on branch
+   `X3/<slug>`, and its PR holds the config, the report and the handoff. A
+   retrain or a seed rerun gets a new X row; do not put it on a `docs/` branch
+   or reopen a `done` T row. Take the GPU lock and follow section 7. Fill the
+   row's run folder and report in the same PR, and set it to `done` only when
+   both exist.
 2. **Branch** from an up-to-date `main`: `<task-id>/<slug>`, e.g.
    `T4/dataloader`. One task per branch, one PR per task. Never commit to
    `main`. Make your first commit `plan: start T4`, which only sets the task
