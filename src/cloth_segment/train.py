@@ -8,8 +8,9 @@ One loop for every model (D5). Flow:
 3. Train for `train.iters` optimizer steps: AdamW, linear warmup then poly
    decay, cross-entropy with IGNORE skipped, autocast per `train.amp`.
 4. Every `eval.every` steps and at the last step, score the internal val split
-   with the eval-v1 protocol. Keep `ckpt/last.pt` (model, optimizer, step) and
-   `ckpt/best.pt` (model only, highest val mIoU).
+   per dataset (`evaluate`, eval-v2). Keep `ckpt/last.pt` (model, optimizer,
+   step) and `ckpt/best.pt` (model only, highest `eval.select` value, by
+   default the mean of the per-dataset val mIoUs).
 5. Log to `log.jsonl` (one JSON object per line); write the result to
    `meta.json` (`finished` or `failed`).
 
@@ -148,14 +149,15 @@ def fit(
     val_loader = evaluate.eval_loader(val_set, tr["batch_size"], cfg["run"]["num_workers"])
     checks = set(eval_steps(iters, cfg["eval"]["every"]))
     select = cfg["eval"]["select"]
-    if select != "miou":
-        raise ValueError(f"eval.select must be miou, got {select!r}")
+    if select not in evaluate.SELECT_RULES:  # fail before training, not at the first check
+        raise ValueError(f"eval.select must be one of {evaluate.SELECT_RULES}, got {select!r}")
+    split = cfg["eval"]["split"]
 
     ckpt = run_dir / "ckpt"
     ckpt.mkdir(exist_ok=True)
     log = JsonLog(run_dir / "log.jsonl")
     log_every = cfg["run"]["log_every"]
-    best = {"step": None, "miou": -math.inf}
+    best: dict = {"step": None, "value": -math.inf}
     t0 = t_log = time.perf_counter()
     loss_sum, loss_n = 0.0, 0
     eval_seconds = 0.0
@@ -192,12 +194,15 @@ def fit(
 
         if step in checks:
             t_eval = time.perf_counter()
-            cm = evaluate.predict_confusion(model, val_loader, device, dtype)
+            cms = evaluate.predict_confusions(model, val_loader, device, dtype)
             model.train()
-            s = evaluate.scores(cm, SHARED_CLASSES)
-            log.write(step=step, split=cfg["eval"]["split"], **s)
-            miou = "undefined" if s["miou"] is None else f"{s['miou']:.4f}"
-            print(f"step {step} val mIoU {miou}", flush=True)
+            val = evaluate.val_scores(cms, SHARED_CLASSES)
+            for name, s in val["datasets"].items():
+                log.write(step=step, split=split, dataset=name, **s)
+            log.write(step=step, split=split, dataset="pooled", **val["pooled"])
+            value = evaluate.selection_value(val, select)
+            log.write(step=step, split=split, select=select, value=value)
+            print(f"step {step} {split} {_summary(val, select, value)}", flush=True)
             torch.save(
                 {
                     "step": step,
@@ -208,22 +213,35 @@ def fit(
                 },
                 ckpt / "last.pt",
             )
-            if s["miou"] is not None and s["miou"] > best["miou"]:
-                best = {"step": step, "miou": s["miou"]}
+            if value is not None and value > best["value"]:
+                best = {"step": step, "value": value, "val": val}
                 torch.save({"step": step, "model": model.state_dict()}, ckpt / "best.pt")
             t_log = time.perf_counter()  # do not count eval time as train time
             eval_seconds += t_log - t_eval
 
     if best["step"] is None:
-        raise RuntimeError("no best.pt: val mIoU was undefined at every check (val has no labels?)")
+        raise RuntimeError(
+            f"no best.pt: val {select} was undefined at every check (a val dataset has no labels?)"
+        )
     total = time.perf_counter() - t0
     return {
         "steps": iters,
         "best_step": best["step"],
-        "best_val_miou": best["miou"],
+        "best_val_select": select,
+        "best_val_value": best["value"],
+        "best_val_miou_by_dataset": {n: s["miou"] for n, s in best["val"]["datasets"].items()},
+        "best_val_miou": best["val"]["miou"],  # pooled (eval-v1 meaning), for comparison
         "train_seconds": round(total - eval_seconds, 1),  # without validation
         "eval_seconds": round(eval_seconds, 1),
     }
+
+
+def _summary(val: dict, select: str, value: float | None) -> str:
+    def f(x: float | None) -> str:
+        return "undefined" if x is None else f"{x:.4f}"
+
+    parts = [f"{n} {f(s['miou'])}" for n, s in val["datasets"].items()]
+    return f"{select} {f(value)} (mIoU {', '.join(parts)}; pooled {f(val['miou'])})"
 
 
 def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:

@@ -42,7 +42,7 @@ loss:
 eval:                  # validation during training (internal val split, never test, D4)
   split: val
   every: 4000          # iterations; also always at the last iteration
-  select: miou         # checkpoint kept as best.pt = highest val mIoU (eval-v1)
+  select: dataset_mean_miou  # best.pt = highest mean of per-dataset val mIoU (eval-v2, M3)
 
 run:                   # not hashed: names and runtime settings that do not change results
   num_workers: 8       # T4 loader: ~256 img/s at 8 workers
