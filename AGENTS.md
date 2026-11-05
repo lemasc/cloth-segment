@@ -55,6 +55,11 @@ time; the readers may not be fluent in the language used.
 
 ## Starting a task
 
+A task ID is a T, E, M or X row of `docs/PLAN.md`. A T row is code, config and
+tests; a training or evaluation run is an X row with its own branch and PR (a
+retrain is a new X row, not a `docs/` branch). Fill the X row's run folder and
+report column when you finish.
+
 Branch `<task-id>/<slug>`. Make the first commit `plan: start <task-id>`
 (task to `doing` in `PLAN.md`, nothing else).
 
