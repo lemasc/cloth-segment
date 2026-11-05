@@ -49,7 +49,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T3 | Splits and manifest (group split for DFMM, duplicate check across datasets) | done |
 | T4 | Data loader (segmentation + DFMM attributes) and augmentation | done |
 | T5 | Training and evaluation pipeline (config-driven, shared by all models) | done |
-| T6 | Model A: U-Net (ResNet-34) | todo |
+| T6 | Model A: U-Net (ResNet-34) | done |
 | T7 | Model B: DeepLabV3+ (ResNet-50) | todo |
 | T8 | Model C: SegFormer-B2 | todo |
 | T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | todo |

@@ -1,0 +1,5 @@
+# T6 Model A: U-Net with a ResNet-34 encoder (ImageNet-pretrained, D5).
+# Overrides only model.*; shared fields stay in base.yaml.
+model:
+  name: unet_r34
+  pretrained: true

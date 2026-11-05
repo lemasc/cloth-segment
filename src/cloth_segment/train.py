@@ -117,8 +117,10 @@ def cap_gpu_memory(device: torch.device) -> float | None:
     """Cap this process to the GPU memory free now; returns the cap in MiB."""
     if device.type != "cuda":
         return None
-    free, total = torch.cuda.mem_get_info(device)
-    torch.cuda.set_per_process_memory_fraction(free / total, device)
+    # set_per_process_memory_fraction rejects a device without an index ("cuda")
+    index = torch.cuda.current_device() if device.index is None else device.index
+    free, total = torch.cuda.mem_get_info(index)
+    torch.cuda.set_per_process_memory_fraction(free / total, index)
     return free / 2**20
 
 
