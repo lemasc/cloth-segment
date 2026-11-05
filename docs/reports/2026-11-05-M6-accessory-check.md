@@ -1,9 +1,10 @@
 # Accessory class check (M6)
 
 ## In plain words
-Three cheap checks on the `accessory` class, no training and no GPU.
+Four checks on the `accessory` class. Steps 1–3 need no GPU. Step 4 ran inference on the two saved U-Net checkpoints (GPU lock taken, no training).
 DFMM eyeglass labels look clean, so label noise does not explain why `accessory` fails on DFMM.
 DFMM has very little `accessory` data: 455 train images with it, and only 57 in val. Dropping `accessory` from the mean changes the run comparison from −0.0096 to −0.0008.
+Per raw class (step 4): the retrain lost the sunglasses/eyeglass class (recall 0.0–0.6% against 24–41% in the original run), and scarf is almost never found in either run (0–4%). Glove is found on LIP only, at about 14–15% in both runs.
 These numbers support the 11-class reporting that the T6 retrain report already asks for.
 
 ## 1. DFMM eyeglass masks
@@ -46,10 +47,42 @@ From `eval/*/metrics.json` (original run eval-v1, retrain eval-v2). The 12-class
 
 Mean of the three datasets: 12 classes 0.6344 (original) vs 0.6248 (retrain); 11 classes 0.6797 vs 0.6789; `accessory` alone 0.1361 vs 0.0293.
 
+## 4. `accessory` per raw class (test sets, `best.pt` step 40000)
+Script: `scripts/accessory_by_raw_class.py`; library: `src/cloth_segment/rawclass.py`. Raw data: `docs/reports/2026-11-05-M6-accessory-by-raw-class.json`.
+It reuses the eval pipeline, so predictions are those behind the saved metrics. Cross-check: for all 6 run/dataset pairs, `accessory` ground-truth pixels and true positives equal the saved `confusion_matrix` row exactly.
+
+*Recall* = pixels of the raw class predicted `accessory` / its pixels. *IoU\** = TP / (raw-class pixels + `accessory` predictions on non-accessory pixels); other raw accessory classes are left out, so a class is not punished for hits on a sibling. *Hit rate* = share of images with the class where at least half of its pixels are predicted `accessory`. Only recall and IoU\* are in the table; the rest is in the JSON.
+
+| dataset | raw class | test pixels (images) | recall original | recall retrain | IoU\* original | IoU\* retrain |
+|---|---|---|---|---|---|---|
+| LIP | glove | 1,879,522 (1,310) | 0.150 | 0.137 | 0.126 | 0.126 |
+| LIP | sunglasses | 319,498 (679) | 0.241 | 0.006 | 0.114 | 0.004 |
+| LIP | scarf | 696,160 (197) | 0.037 | 0.001 | 0.025 | 0.001 |
+| CIHP | glove | 522,334 (316) | 0.020 | 0.011 | 0.015 | 0.011 |
+| CIHP | sunglasses | 379,419 (429) | 0.413 | 0.000 | 0.282 | 0.000 |
+| CIHP | scarf | 1,913,574 (359) | 0.042 | 0.000 | 0.038 | 0.000 |
+| DFMM | eyeglass | 124,247 (66) | 0.267 | 0.001 | 0.258 | 0.001 |
+| DFMM | neckwear | 32,935 (6) | 0.011 | 0.000 | 0.010 | 0.000 |
+| DFMM | gloves, tie | 0 | – | – | – | – |
+
+Where the missed pixels go (largest shares, from the JSON; same in both runs unless noted):
+- scarf: `outer` 37–47%, `upper` 22–31%. The model reads scarves as coat or top.
+- sunglasses / eyeglass: `face` 25–70%, `headwear` up to 39% (LIP and CIHP), `hair` 6–13%.
+- glove: `background` about 42–46%, then `outer`, `skin`.
+- DFMM neckwear: `outer` 65–85%, `upper` 9–31%.
+
+### What this shows
+- **The retrain lost sunglasses/eyeglass.** The original run found 24–41% of sunglasses pixels on LIP/CIHP and 27% of DFMM eyeglass pixels. The retrain finds almost none. Glove on LIP is the same in both runs (0.150 vs 0.137). So the 12-class gap between the two runs comes from sunglasses/eyeglass, not from the whole class.
+- **Scarf is not learned in either run** (recall 0–4%). It is the biggest raw source of CIHP `accessory` pixels (1.91M of 2.82M test pixels, 68%), which caps CIHP `accessory` IoU. Glove on CIHP is also weak (1–2%), though it works somewhat on LIP.
+- **Neither of the two classes you asked about is the problem.** DFMM gloves and tie have 0 test pixels. Glove on LIP is the only raw class both runs detect at the same level. This does not support dropping glove or tie.
+- **Why scarf and sunglasses fail the way they do is not tested.** The "where the pixels go" numbers show what they are confused with, not why. 39% of LIP sunglasses pixels being predicted `headwear` was unexpected and I have not looked at it.
+
 ## What is still unknown
-- Which raw class (glove, scarf, sunglasses) fails on LIP and CIHP. This needs per-raw-class evaluation (not done).
-- Why eyeglass pixels go to `face`. Not tested.
+- Why LIP sunglasses are predicted `headwear` so often (view a few images).
+- Whether more steps (80k) would make scarf or sunglasses stable. Only two 40k checkpoints were measured.
 - Whether DFMM neckwear and tie masks are as clean as eyeglass. Not viewed.
+- Seed-to-seed spread of each raw class: two runs only, and the original run had no seed on model init.
 
 ## Next
-Per-raw-class evaluation needs inference on the saved checkpoint (GPU or slow CPU), so it waits for a go-ahead.
+- Decide on `accessory` scope with this table, before T7/T8 (options: keep, split eyewear from clothing-like scarf, or ignore a class). Any label change is a `frozen-change`.
+- Report 11-class and `accessory` separately in T9.
