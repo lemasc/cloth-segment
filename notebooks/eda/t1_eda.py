@@ -263,6 +263,114 @@ def _(mo, shared_image, shared_pixel):
 @app.cell
 def _(mo):
     mo.md("""
+    ### 4b. What merges into each shared class, and at what ratio
+
+    Section 4 shows how big each shared class is. This part opens each one up:
+    which raw classes feed it, and how much each supplies.
+
+    - **% of shared class**: this raw class's share of the pixels that end up
+      in the shared class (100 = only source). Sums to 100 per shared class.
+    - **% of dataset**: share of all labelled pixels of the dataset.
+    - A shared class built from one dominant raw class is clean. One built
+      from several unrelated raw classes (see `accessory`) is a mix, and the
+      model has to learn all of them under one label.
+    - Rows with shared class `ignore` are dropped from loss and metrics.
+
+    *Scope* picks which images are counted. `all scanned` is every decoded
+    pair, before any exclusion. The other choices use the `splits-v2`
+    manifest: images excluded there are never counted.
+    """)
+    return
+
+
+@app.cell
+def _(DATA, mo, scans):
+    _manifest = DATA / "splits" / "splits-v2" / "manifest.csv"
+    mo.stop(
+        not _manifest.exists(),
+        mo.md(f"Missing `{_manifest}`. Run `scripts/build_splits.py`."),
+    )
+    scope = mo.ui.dropdown(
+        ["all scanned", "train", "val", "test"], value="all scanned", label="Scope"
+    )
+    scope
+    return (scope,)
+
+
+@app.cell
+def _(DATA, pd, scans, scope):
+    from cloth_segment.data.composition import merge_composition
+
+    _m = pd.read_csv(
+        DATA / "splits" / "splits-v2" / "manifest.csv",
+        usecols=["dataset", "id", "split"],
+        dtype={"id": str},
+        keep_default_na=False,
+    )
+    _tables = {}
+    for _d, _df in scans.items():
+        _df = _df[_df.error == ""]
+        if scope.value != "all scanned":
+            _keep = _m[(_m.dataset == _d) & (_m.split == scope.value)]
+            _df = _df[_df["id"].isin(set(_keep["id"]))]
+        _tables[_d] = merge_composition(_df, _d)
+    composition = _tables
+    return (composition,)
+
+
+@app.cell
+def _(composition, mo, scope):
+    mo.vstack(
+        [
+            mo.md(f"Scope: **{scope.value}**"),
+            mo.ui.tabs(
+                {
+                    _d: mo.ui.table(
+                        _t.drop(columns="dataset").round(3),
+                        page_size=30,
+                        selection=None,
+                    )
+                    for _d, _t in composition.items()
+                }
+            ),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(SHARED, composition, plt):
+    # One panel per dataset, one bar per shared class, stacked by raw class.
+    _fig, _axes = plt.subplots(1, len(composition), figsize=(18, 5), sharey=True)
+    for _ax, (_d, _t) in zip(_axes, composition.items()):
+        _order = [*SHARED, "ignore"]
+        for _i, _c in enumerate(_order):
+            _sub = _t[_t.shared == _c]
+            _bottom = 0.0
+            for _r in _sub.itertuples():
+                if _r.pct_of_shared <= 0:
+                    continue
+                _ax.bar(_i, _r.pct_of_shared, bottom=_bottom, edgecolor="white", linewidth=0.5)
+                if _r.pct_of_shared >= 8:
+                    _ax.text(
+                        _i,
+                        _bottom + _r.pct_of_shared / 2,
+                        f"{_r.raw}\n{_r.pct_of_shared:.0f}%",
+                        ha="center",
+                        va="center",
+                        fontsize=6,
+                    )
+                _bottom += _r.pct_of_shared
+        _ax.set_xticks(range(len(_order)), _order, rotation=60, ha="right")
+        _ax.set_title(f"{_d}: raw classes inside each shared class (%)")
+    _fig.tight_layout()
+    _fig
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md("""
     ## 5. Sample viewer
 
     Pick a dataset and a raw class. Images containing that class are shown

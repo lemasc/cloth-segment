@@ -74,3 +74,4 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | M2 | Size and shape filter for LIP/CIHP/DFMM, `splits-v2` | done |
 | M3 | Per-dataset val scores and checkpoint selection, `eval-v2` (`frozen-change`) | done |
 | M4 | Seed model initialisation; parameter count in `meta.json` | done |
+| M5 | EDA notebook section: which raw classes merge into each shared class, and at what ratio | done |
