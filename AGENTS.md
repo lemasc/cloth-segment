@@ -30,7 +30,8 @@ uv run python -m cloth_segment.train configs/<experiment>.yaml
 - Do not write to `datasets/`, `data/` or `runs/` except through the project's
   scripts, and never delete anything there: they may be shared storage.
 - Do not start a GPU job unless the user asked. If the GPU is shared, take the
-  GPU lock first and release it afterwards.
+  GPU lock first and release it afterwards. For how to launch and watch long
+  jobs, follow CONTRIBUTING section 7 ("Long-running jobs").
 - Add dependencies with `uv add` and commit `uv.lock`. Justify each new one in the PR.
 - Never invent or estimate metrics. Report a failing test or run as failing,
   with its output.

@@ -147,6 +147,64 @@ readers who have not seen the code.
   quote both. Small numeric differences across GPUs are expected. The
   maintainer decides which runs are reported.
 
+### Long-running jobs (draft)
+
+> Draft. Written after one full run (T6). Revise it after more runs. It applies
+> to anything that runs long, such as training or a full evaluation, and is
+> written for people and for coding agents. Tool names are examples; use your
+> harness's equivalent.
+
+1. **Do not assume anyone waits.** The person may watch, may leave, or the
+   machine may shut down. Every run has a run folder (D7). Give its full path
+   as soon as it exists, so a later session can find it. The run folder is the
+   record: `meta.json` (status), `log.jsonl` (loss and validation) and
+   `error.txt` (a Python failure). Do not depend on terminal output.
+2. **Detach where the system allows it.** Start the job so that closing the
+   session does not kill it (`setsid nohup ... &`, or `tmux`). The run folder
+   does not exist before launch, so send the launch output to a throwaway file.
+   Do not say the run started until its folder appears. If it does not appear,
+   read the throwaway file: that is a startup failure. If detaching is not
+   possible, tell the person they must stay in the foreground, or ask them to
+   run it themselves.
+3. **Watch with the harness's event tools,** not blocking loops such as
+   `until ...; do sleep; done`, which hold the session and are often blocked.
+   In Claude Code, use the Monitor tool (30 minutes at most per arm) or a
+   background shell task. A watcher should:
+   - read the run folder (`meta.json`, `log.jsonl`), not printed text;
+   - prefix every event with the time since `started_at`;
+   - report a finish, a failure and a silent death. Silence is not success. A
+     silent death is a process that is gone while `meta.json` still says
+     `running`, for example after a hard kill or a shutdown;
+   - test that the process is alive with an exact pattern or a PID. A loose
+     `pgrep -f` pattern also matches the watcher's own command line, so the
+     check never fails.
+4. **Check the first iterations closely.** Look for errors, loss going down,
+   seconds per iteration, and the first validation. Choose the print interval
+   from the measured pace: about one event every few minutes, not every minute.
+   Each event costs context and gives little.
+5. **When the run looks healthy, stop the progress watch and hand control
+   back.** Start a watch for errors and completion only, without asking first:
+   a question leaves nothing watching until it is answered. Then end your turn
+   with a message that gives the run path and an ETA (remaining iterations
+   times the measured seconds per iteration, plus validation time), says what
+   is being watched, and says that closing the session ends the watch but not
+   the run. The person can then stop the watch, close the session, or carry on
+   with other work. Anyone can check a run later in `meta.json` and
+   `log.jsonl`.
+6. **Keep that watch quiet.** Do not stream progress. At each expiry, read the
+   status and the last log lines before re-arming. Stop re-arming when the run
+   has ended or the person says to stop. Each expiry costs one turn, so say so
+   if the run will last many hours.
+7. **When the run completes and your session is still alive,** write the report
+   file in `docs/reports/` yourself, without asking, then reply (section 6
+   rules). Include the run folder, config hash and data version, results,
+   interpretation, what is still unknown, and next tasks. Do not make up or
+   estimate numbers.
+8. **On a failure:** fix, test and commit first, and put the findings in the
+   report. Then decide on a rerun. Rerun if it is cheap. Ask first if it is
+   costly, for example when the last of four comparison models fails and the
+   earlier runs may need redoing.
+
 ## 8. Notebooks
 
 - EDA: marimo (`notebooks/eda/*.py`). Analysis: Jupyter (`notebooks/analysis/`),
