@@ -51,10 +51,11 @@ def run_dir(tmp_path, monkeypatch):
     return rd
 
 
-def _maker(tmp_path):
+def _maker(tmp_path, split="test"):
     df, ir, mr = _write_fixture(tmp_path / "fx", SPECS)
 
-    def make(cfg, test_set):
+    def make(cfg, test_set, s):
+        assert s == split
         rows = df[df.dataset == test_set]
         return SegDataset(rows, cfg["input"]["size"], train=False, image_root=ir, mask_root=mr)
 
@@ -75,7 +76,8 @@ def test_evaluate_run_writes_metrics(tmp_path, run_dir):
         assert cm[:, 4].tolist() == class_pixel_counts(rows).tolist()  # all predicted class 4
         assert cm.sum() == cm[:, 4].sum()
         assert m["images"] == len(rows) and m["checkpoint_step"] == 123
-        assert m["classes"] == list(SHARED_CLASSES) and m["test_set"] == test_set
+        assert m["classes"] == list(SHARED_CLASSES) and m["dataset"] == test_set
+        assert m["split"] == "test" and m["checkpoint_select"] == "dataset_mean_miou"
         assert m["config_hash"] == runs.read_meta(run_dir)["config_hash"]
         assert m["eval_version"] == evaluate.EVAL_VERSION
 
@@ -86,7 +88,7 @@ def test_evaluate_run_never_overwrites(tmp_path, run_dir):
     path = evaluate.evaluate_run(run_dir, ["lip"], cpu, num_workers=0, make_dataset=make)["lip"]
     before = path.read_text()
 
-    def boom(cfg, test_set):
+    def boom(cfg, test_set, split):
         raise AssertionError("cached test set must not be rebuilt")
 
     evaluate.evaluate_run(run_dir, ["lip"], cpu, num_workers=0, make_dataset=boom)
@@ -103,9 +105,37 @@ def test_resolve_run(tmp_path, run_dir):
         evaluate.resolve_run(run_dir)
 
 
-def test_load_test_set_rejects_unknown():
+def test_evaluate_run_val_split_has_its_own_folder(tmp_path, run_dir):
+    _, make = _maker(tmp_path, split="val")  # make() asserts it is asked for val
+    cpu = torch.device("cpu")
+    path = evaluate.evaluate_run(
+        run_dir, ["lip"], cpu, split="val", num_workers=0, make_dataset=make
+    )["lip"]
+    assert path == run_dir / "eval" / evaluate.EVAL_VERSION / "val" / "lip" / "metrics.json"
+    assert json.loads(path.read_text())["split"] == "val"
+    # the test-split result for the same dataset is separate and not yet written
+    assert not evaluate.metrics_path(run_dir, "lip").exists()
+
+
+def test_load_model_skips_pretrained_download(tmp_path, run_dir, monkeypatch):
+    seen = []
+
+    class _Record(_Constant):
+        def __init__(self, cfg):
+            seen.append(cfg)
+            super().__init__(cfg)
+
+    monkeypatch.setattr(models, "REGISTRY", {"const": _Record})
+    cfg = yaml.safe_load((run_dir / "config.yaml").read_text())
+    evaluate.load_model(run_dir, cfg, torch.device("cpu"))
+    assert seen[0]["pretrained"] is False
+
+
+def test_load_eval_set_rejects_unknown():
     with pytest.raises(ValueError, match="test set"):
-        evaluate.load_test_set({"data": {}}, "atr")
+        evaluate.load_eval_set({"data": {}}, "atr")
+    with pytest.raises(ValueError, match="split"):
+        evaluate.load_eval_set({"data": {}}, "lip", "train")
 
 
 def test_main_rejects_unknown_test_set():

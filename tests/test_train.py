@@ -4,6 +4,8 @@ No real data and no GPU; the training loop itself is not tested end to end
 (docs/conventions.md).
 """
 
+import json
+
 import pytest
 import torch
 import yaml
@@ -143,7 +145,7 @@ def test_amp_dtype():
         evaluate.amp_dtype("fp8", cpu)
 
 
-# --- val scoring at original resolution (eval-v1) ----------------------------------
+# --- val scoring at original resolution, per dataset (eval-v2) ---------------------
 
 SPECS = [
     ("lip", "val", 120, 70, False),
@@ -176,6 +178,51 @@ def test_predict_confusion_counts_original_pixels(tmp_path):
     s = evaluate.scores(cm)  # fixture masks use classes 0, 1, 4, 8
     assert s["iou"][evaluate.SHARED_CLASSES[4]] > 0
     assert s["iou"][evaluate.SHARED_CLASSES[1]] == 0
+
+
+def test_predict_confusions_keeps_datasets_apart(tmp_path):
+    df, ir, mr = _write_fixture(tmp_path, SPECS)
+    ds = SegDataset(df, size=64, train=False, image_root=ir, mask_root=mr)
+    loader = evaluate.eval_loader(ds, batch_size=2, num_workers=0)  # batches mix datasets
+    cms = evaluate.predict_confusions(_AlwaysClass(4), loader, torch.device("cpu"))
+    assert list(cms) == ["lip", "cihp", "dfmm"]
+    for name, cm in cms.items():
+        assert cm[:, 4].tolist() == class_pixel_counts(df[df.dataset == name]).tolist()
+    pooled = evaluate.predict_confusion(_AlwaysClass(4), loader, torch.device("cpu"))
+    assert torch.equal(pooled, sum(cms.values()))
+
+
+def _cm(diag: list[int], off: int = 0) -> torch.Tensor:
+    """Confusion matrix with `diag` on the diagonal and `off` pixels of class 0 predicted as 1."""
+    cm = torch.zeros(NUM_CLASSES, NUM_CLASSES, dtype=torch.int64)
+    for i, v in enumerate(diag):
+        cm[i, i] = v
+    cm[0, 1] += off
+    return cm
+
+
+def test_val_scores_weighs_each_dataset_the_same():
+    small = _cm([10, 10])  # perfect: mIoU 1
+    big = _cm([1000, 1000], off=1000)  # IoU 0.5 and 0.5: mIoU 0.5
+    val = evaluate.val_scores({"lip": small, "dfmm": big})
+    assert val["datasets"]["lip"]["miou"] == 1.0
+    assert val["datasets"]["dfmm"]["miou"] == 0.5
+    assert val["dataset_mean_miou"] == 0.75
+    # the pooled score follows the big dataset
+    assert val["miou"] == val["pooled"]["miou"] < 0.6
+    assert evaluate.selection_value(val, "dataset_mean_miou") == 0.75
+    assert evaluate.selection_value(val, "miou") == val["miou"]
+
+
+def test_val_scores_mean_undefined_if_a_dataset_has_no_labels():
+    val = evaluate.val_scores({"lip": _cm([10, 10]), "cihp": _cm([])})
+    assert val["datasets"]["cihp"]["miou"] is None
+    assert val["dataset_mean_miou"] is None
+
+
+def test_selection_value_rejects_unknown_rule():
+    with pytest.raises(ValueError, match="eval.select"):
+        evaluate.selection_value({"miou": 1.0}, "dice")
 
 
 def test_eval_loader_rejects_train_dataset(tmp_path):
@@ -211,13 +258,16 @@ def _fit_cfg(iters: int) -> dict:
             "poly_power": 1.0,
         },
         "loss": {"name": "ce"},
-        "eval": {"split": "val", "every": 2, "select": "miou"},
+        "eval": {"split": "val", "every": 2, "select": "dataset_mean_miou"},
         "run": {"num_workers": 0, "log_every": 1},
     }
 
 
 def _fit_sets(tmp_path):
-    specs = [("lip", "train", 64, 64, True)] * 4 + [("lip", "val", 64, 64, False)] * 2
+    specs = [("lip", "train", 64, 64, True)] * 4 + [
+        ("lip", "val", 64, 64, False),
+        ("dfmm", "val", 96, 64, False),
+    ]
     df, ir, mr = _write_fixture(tmp_path, specs)
     train = df[df.split == "train"]
     val = df[df.split == "val"]
@@ -239,9 +289,33 @@ def test_fit_reports_train_and_eval_seconds_separately(tmp_path):
         train_set=train_set,
         val_set=val_set,
     )
-    assert out["best_step"] == 2 and out["best_val_miou"] is not None
+    assert out["best_step"] == 2 and out["best_val_select"] == "dataset_mean_miou"
+    by_ds = out["best_val_miou_by_dataset"]
+    assert list(by_ds) == ["lip", "dfmm"]
+    assert out["best_val_value"] == pytest.approx(sum(by_ds.values()) / 2)
+    assert out["best_val_miou"] is not None  # pooled, kept for comparison with eval-v1
     assert out["eval_seconds"] >= 0 and out["train_seconds"] >= 0
     assert (run_dir / "ckpt" / "best.pt").exists()
+    rows = [json.loads(line) for line in (run_dir / "log.jsonl").read_text().splitlines()]
+    val_rows = [r for r in rows if r.get("split") == "val"]
+    assert [r.get("dataset") for r in val_rows if "dataset" in r] == ["lip", "dfmm", "pooled"]
+    sel = [r for r in val_rows if "select" in r]
+    assert sel == [
+        {"step": 2, "split": "val", "select": "dataset_mean_miou", "value": out["best_val_value"]}
+    ]
+
+
+def test_fit_rejects_unknown_select_before_training(tmp_path):
+    from cloth_segment.train import fit
+
+    cfg = _fit_cfg(2)
+    cfg["eval"]["select"] = "dice"
+    run_dir = tmp_path / "run"
+    run_dir.mkdir()
+    train_set, val_set = _fit_sets(tmp_path)
+    with pytest.raises(ValueError, match="eval.select"):
+        fit(cfg, run_dir, torch.device("cpu"), model=_Tiny(), train_set=train_set, val_set=val_set)
+    assert not (run_dir / "log.jsonl").exists()
 
 
 def test_fit_fails_clearly_when_val_miou_is_never_defined(tmp_path, monkeypatch):
