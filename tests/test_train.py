@@ -118,6 +118,65 @@ def test_register_and_build(monkeypatch):
         register("tiny")(lambda cfg: nn.Identity())
 
 
+class _RandomInit(nn.Module):
+    """Randomly initialised layers, like a decoder and head on a pretrained encoder."""
+
+    def __init__(self, cfg):
+        super().__init__()
+        self.conv = nn.Conv2d(3, NUM_CLASSES, 3)
+        self.frozen = nn.Linear(2, 2)
+        self.frozen.requires_grad_(False)
+
+    def forward(self, x):
+        return self.conv(x)
+
+
+def test_seeded_model_is_reproducible(monkeypatch):
+    from cloth_segment.train import seeded_model
+
+    monkeypatch.setattr(models, "REGISTRY", {"rand": _RandomInit})
+    cfg = {"seed": 0, "model": {"name": "rand"}}
+    torch.rand(5)  # RNG state before the build must not matter
+    a = seeded_model(cfg).state_dict()
+    torch.rand(7)
+    b = seeded_model(cfg).state_dict()
+    c = seeded_model(cfg | {"seed": 1}).state_dict()
+    assert all(torch.equal(a[k], b[k]) for k in a)
+    assert not torch.equal(a["conv.weight"], c["conv.weight"])
+
+
+def test_run_seeds_the_model_and_records_params(tmp_path, monkeypatch):
+    from cloth_segment import train
+
+    monkeypatch.setattr(models, "REGISTRY", {"rand": _RandomInit})
+    cfg = yaml.safe_load((paths.CONFIGS / "base.yaml").read_text())
+    cfg["model"]["name"] = "rand"
+    created = runs.create_run  # default runs_dir is the shared mount: redirect to tmp
+    monkeypatch.setattr(train.runs, "load_config", lambda path: cfg)
+    monkeypatch.setattr(train.runs, "find_finished", lambda h, runs_dir=None: None)
+    monkeypatch.setattr(
+        train.runs,
+        "create_run",
+        lambda c, slug: created(c, slug, tmp_path / "runs", git=("abc1234", False)),
+    )
+    monkeypatch.setattr(train, "load_split", lambda *a, **k: None)
+    seen = {}
+
+    def fake_fit(cfg, run_dir, device, *, model, train_set, val_set):
+        seen["weight"] = model.conv.weight.detach().clone()
+        return {"steps": 0}
+
+    monkeypatch.setattr(train, "fit", fake_fit)
+    run_dir = train.run(tmp_path / "x.yaml", device=torch.device("cpu"))
+    meta = runs.read_meta(run_dir)
+    model = _RandomInit(None)
+    assert meta["status"] == "finished"
+    assert meta["params"] == sum(p.numel() for p in model.parameters())
+    assert meta["trainable_params"] == model.conv.weight.numel() + model.conv.bias.numel()
+    torch.manual_seed(cfg["seed"])
+    assert torch.equal(seen["weight"], _RandomInit(None).conv.weight)
+
+
 def test_logits_at():
     x = torch.randn(2, NUM_CLASSES, 4, 4)
     assert logits_at(x, (4, 4)) is x
