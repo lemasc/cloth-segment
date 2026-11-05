@@ -74,3 +74,4 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | M2 | Size and shape filter for LIP/CIHP/DFMM, `splits-v2` | done |
 | M3 | Per-dataset val scores and checkpoint selection, `eval-v2` (`frozen-change`) | done |
 | M4 | Seed model initialisation; parameter count in `meta.json` | done |
+| M6 | Check the `accessory` class: DFMM eyeglass masks, per-dataset counts, 11- vs 12-class mIoU | doing |
