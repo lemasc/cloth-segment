@@ -2,6 +2,7 @@
 
 import pytest
 import torch
+import torch.nn.functional as F
 import yaml
 from torch import nn
 
@@ -157,5 +158,97 @@ def test_deeplabv3p_r50_config():
     assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
     assert cfg["model"]["name"] == "deeplabv3p_r50"
     assert cfg["model"]["pretrained"] is True
+    cfg["model"]["pretrained"] = False  # no download in tests
+    assert isinstance(build_model(cfg["model"]), nn.Module)
+
+
+@pytest.fixture(scope="module")
+def segformer():
+    m = build_model({"name": "segformer_b2", "pretrained": False})
+    return m.eval()
+
+
+# (1, 3, 100, 75) and (1, 3, 33, 47) are not divisible by 32: bare smp.Segformer rejects them.
+@pytest.mark.parametrize("shape", [(2, 3, 64, 96), (1, 3, 100, 75), (1, 3, 33, 47)])
+def test_segformer_b2_output_shape(segformer, shape):
+    with torch.no_grad():
+        out = segformer(torch.randn(shape))
+    assert out.shape == (shape[0], NUM_CLASSES, *shape[2:])
+    assert out.dtype == torch.float32
+
+
+def test_segformer_b2_returns_logits_not_probabilities(segformer):
+    with torch.no_grad():
+        out = segformer(torch.randn(1, 3, 64, 64))
+    assert not torch.allclose(out.softmax(1).sum(1), out.sum(1))
+
+
+def test_segformer_b2_architecture(segformer):
+    from cloth_segment.models.segformer import OUTPUT_STRIDE
+
+    assert isinstance(segformer, PadToMultiple)
+    assert segformer.multiple == OUTPUT_STRIDE == 32
+    net = segformer.net
+    # MiT-B2, not B0/B1: embed dims and depths from the paper.
+    assert net.encoder.out_channels[2:] == [64, 128, 320, 512]
+    assert [len(b) for b in (net.encoder.block1, net.encoder.block2)] == [3, 4]
+    assert [len(b) for b in (net.encoder.block3, net.encoder.block4)] == [6, 3]
+    # B2 decoder width 768, not smp's default 256.
+    assert net.decoder.fuse_stage[0].out_channels == 768
+    # Head: Dropout2d(0.1) -> 1x1 classifier, and no x4 upsampling inside smp.
+    head = list(net.segmentation_head)
+    assert isinstance(head[0], nn.Dropout2d) and head[0].p == 0.1
+    assert isinstance(head[1], nn.Conv2d) and head[1].kernel_size == (1, 1)
+    assert not any(isinstance(m, nn.Upsample) for m in net.modules())
+
+
+def test_segformer_b2_upsamples_with_align_corners_false(segformer):
+    # smp returns 1/4-size logits; the wrapper pads to 32, upsamples x4 with
+    # align_corners=False (as in the original SegFormer) and crops.
+    x = torch.randn(1, 3, 64, 50)
+    with torch.no_grad():
+        low = segformer.net(F.pad(x, (0, 14)))
+        out = segformer(x)
+    assert low.shape == (1, NUM_CLASSES, 16, 16)
+    ref = F.interpolate(low, size=(64, 64), mode="bilinear", align_corners=False)[..., :50]
+    assert torch.equal(out, ref)
+
+
+def test_segformer_b2_dropout_changes_nothing_but_training():
+    def build(cfg):
+        torch.manual_seed(0)
+        return build_model({"name": "segformer_b2", "pretrained": False, **cfg}).eval()
+
+    with_drop, without = build({}), build({"classifier_dropout": 0})
+    assert not any(isinstance(m, nn.Dropout2d) for m in without.modules())
+    # Dropout has no weights: same seed, same initial weights and same eval output.
+    # Same keys too, so a checkpoint loads whatever the dropout rate.
+    a, b = with_drop.state_dict(), without.state_dict()
+    assert a.keys() == b.keys() and all(torch.equal(a[k], b[k]) for k in a)
+    x = torch.randn(1, 3, 64, 64)
+    with torch.no_grad():
+        assert torch.equal(with_drop(x), without(x))
+
+
+@pytest.mark.parametrize("p", [-0.1, 1.0])
+def test_segformer_b2_rejects_bad_dropout(p):
+    with pytest.raises(ValueError, match="classifier_dropout"):
+        build_model({"name": "segformer_b2", "pretrained": False, "classifier_dropout": p})
+
+
+def test_segformer_b2_trains_one_step_in_train_mode():
+    m = build_model({"name": "segformer_b2", "pretrained": False}).train()
+    out = m(torch.randn(2, 3, 64, 64))
+    out.sum().backward()
+    assert out.shape == (2, NUM_CLASSES, 64, 64)
+    assert m.net.segmentation_head[1].weight.grad is not None
+
+
+def test_segformer_b2_config():
+    cfg = yaml.safe_load((paths.CONFIGS / "segformer_b2.yaml").read_text())
+    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert cfg["model"]["name"] == "segformer_b2"
+    assert cfg["model"]["pretrained"] is True
+    assert cfg["model"]["classifier_dropout"] == 0.1
     cfg["model"]["pretrained"] = False  # no download in tests
     assert isinstance(build_model(cfg["model"]), nn.Module)
