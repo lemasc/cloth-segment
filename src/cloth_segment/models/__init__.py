@@ -21,7 +21,7 @@ Builder = Callable[[dict], nn.Module]
 REGISTRY: dict[str, Builder] = {}
 
 # Names the plan expects; each is registered by its own task.
-PLANNED = {"deeplabv3p_r50": "T7", "segformer_b2": "T8"}
+PLANNED = {"segformer_b2": "T8"}
 
 
 def register(name: str) -> Callable[[Builder], Builder]:
@@ -58,5 +58,5 @@ def count_parameters(model: nn.Module, trainable_only: bool = False) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad or not trainable_only)
 
 
-# Model modules register themselves on import (T6: unet; T7, T8 add theirs here).
-from cloth_segment.models import unet  # noqa: E402, F401  (import registers the builder)
+# Model modules register themselves on import (T6: unet, T7: deeplab; T8 adds its own).
+from cloth_segment.models import deeplab, unet  # noqa: E402, F401  (import registers the builders)

@@ -55,7 +55,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T4 | Data loader (segmentation + DFMM attributes) and augmentation | done |
 | T5 | Training and evaluation pipeline (config-driven, shared by all models) | done |
 | T6 | Model A: U-Net (ResNet-34) | done |
-| T7 | Model B: DeepLabV3+ (ResNet-50): code, config, tests (training is X3) | todo |
+| T7 | Model B: DeepLabV3+ (ResNet-50): code, config, tests (training is X3) | done |
 | T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | todo |
 | T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | todo |
 | T10 | Error analysis and limitations | todo |
