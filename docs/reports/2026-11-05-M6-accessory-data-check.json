@@ -1,0 +1,171 @@
+{
+  "data_version": "splits-v2-d023252b81d9",
+  "step1_dfmm_eyeglass_train": {
+    "images": 411,
+    "image_sizes_hw": {
+      "1101x750": 410,
+      "915x750": 1
+    },
+    "median_pixels": 1845.0,
+    "median_box_w": 86.0,
+    "median_box_h": 38.0,
+    "median_fill": 0.5862433862433862,
+    "mean_fill": 0.5710792817492734,
+    "median_face_share_of_box": 0.3405714285714286,
+    "median_pixels_at_eval_input": 398.98967250480734,
+    "sample": {
+      "seed": 0,
+      "ids": [
+        "WOMEN-Pants-id_00003563-02_1_front",
+        "WOMEN-Tees_Tanks-id_00006507-02_1_front",
+        "WOMEN-Rompers_Jumpsuits-id_00002621-01_1_front",
+        "MEN-Suiting-id_00006233-01_4_full",
+        "WOMEN-Dresses-id_00006040-01_4_full",
+        "WOMEN-Skirts-id_00000557-02_1_front",
+        "WOMEN-Shorts-id_00005440-01_4_full",
+        "WOMEN-Pants-id_00006557-03_1_front",
+        "WOMEN-Tees_Tanks-id_00007274-01_7_additional",
+        "WOMEN-Graphic_Tees-id_00003069-01_4_full",
+        "WOMEN-Shorts-id_00005011-02_4_full",
+        "WOMEN-Leggings-id_00001398-03_1_front",
+        "WOMEN-Tees_Tanks-id_00000965-01_4_full",
+        "WOMEN-Dresses-id_00002277-01_1_front",
+        "WOMEN-Shorts-id_00007160-02_4_full",
+        "WOMEN-Blouses_Shirts-id_00004303-01_1_front",
+        "WOMEN-Dresses-id_00007910-01_1_front",
+        "WOMEN-Tees_Tanks-id_00006136-01_4_full",
+        "WOMEN-Blouses_Shirts-id_00000740-04_4_full",
+        "WOMEN-Tees_Tanks-id_00001996-01_4_full",
+        "WOMEN-Tees_Tanks-id_00007756-02_1_front",
+        "WOMEN-Dresses-id_00005549-01_4_full",
+        "WOMEN-Sweaters-id_00003631-02_1_front",
+        "WOMEN-Tees_Tanks-id_00004705-01_1_front"
+      ]
+    }
+  },
+  "step2_accessory_supply": [
+    {
+      "dataset": "lip",
+      "split": "train",
+      "images": 25653,
+      "images_with_accessory": 3404,
+      "pct_images": 13.269403188710871,
+      "accessory_pixels": 8743432,
+      "pct_labelled_pixels": 0.3738069291634939
+    },
+    {
+      "dataset": "lip",
+      "split": "val",
+      "images": 1358,
+      "images_with_accessory": 199,
+      "pct_images": 14.653902798232696,
+      "accessory_pixels": 769951,
+      "pct_labelled_pixels": 0.6223171624326995
+    },
+    {
+      "dataset": "lip",
+      "split": "test",
+      "images": 9632,
+      "images_with_accessory": 1892,
+      "pct_images": 19.642857142857142,
+      "accessory_pixels": 2895180,
+      "pct_labelled_pixels": 0.40959671183131174
+    },
+    {
+      "dataset": "cihp",
+      "split": "train",
+      "images": 26667,
+      "images_with_accessory": 5185,
+      "pct_images": 19.44350695616305,
+      "accessory_pixels": 14190846,
+      "pct_labelled_pixels": 0.3036159668300345
+    },
+    {
+      "dataset": "cihp",
+      "split": "val",
+      "images": 1420,
+      "images_with_accessory": 272,
+      "pct_images": 19.154929577464788,
+      "accessory_pixels": 775126,
+      "pct_labelled_pixels": 0.3115219574539182
+    },
+    {
+      "dataset": "cihp",
+      "split": "test",
+      "images": 5000,
+      "images_with_accessory": 1000,
+      "pct_images": 20.0,
+      "accessory_pixels": 2815327,
+      "pct_labelled_pixels": 0.3211427616582659
+    },
+    {
+      "dataset": "dfmm",
+      "split": "train",
+      "images": 10180,
+      "images_with_accessory": 455,
+      "pct_images": 4.469548133595285,
+      "accessory_pixels": 1423771,
+      "pct_labelled_pixels": 0.01700944571344792
+    },
+    {
+      "dataset": "dfmm",
+      "split": "val",
+      "images": 1228,
+      "images_with_accessory": 57,
+      "pct_images": 4.641693811074918,
+      "accessory_pixels": 127617,
+      "pct_labelled_pixels": 0.012646266999402312
+    },
+    {
+      "dataset": "dfmm",
+      "split": "test",
+      "images": 1293,
+      "images_with_accessory": 72,
+      "pct_images": 5.56844547563805,
+      "accessory_pixels": 157182,
+      "pct_labelled_pixels": 0.014777811177909599
+    }
+  ],
+  "step3_test_miou": {
+    "20261105-0323-7b1798b-unet-r34": {
+      "lip": {
+        "miou_all": 0.5538963249461083,
+        "miou_without_accessory": 0.5935053826764606,
+        "accessory": 0.11819668991223499,
+        "metrics_file": "eval/eval-v1/lip/metrics.json"
+      },
+      "cihp": {
+        "miou_all": 0.5755705447959744,
+        "miou_without_accessory": 0.6203914260471187,
+        "accessory": 0.08254085103338622,
+        "metrics_file": "eval/eval-v1/cihp/metrics.json"
+      },
+      "dfmm": {
+        "miou_all": 0.7736308630765049,
+        "miou_without_accessory": 0.825082064046968,
+        "accessory": 0.20766765240141102,
+        "metrics_file": "eval/eval-v1/dfmm/metrics.json"
+      }
+    },
+    "20261105-1307-1acb88f-unet-r34": {
+      "lip": {
+        "miou_all": 0.5501448911389172,
+        "miou_without_accessory": 0.5924277242932031,
+        "accessory": 0.08503372644177157,
+        "metrics_file": "eval/eval-v2/lip/metrics.json"
+      },
+      "cihp": {
+        "miou_all": 0.5671635904958784,
+        "miou_without_accessory": 0.6185210283438214,
+        "accessory": 0.0022317741685049623,
+        "metrics_file": "eval/eval-v2/cihp/metrics.json"
+      },
+      "dfmm": {
+        "miou_all": 0.7569740514101012,
+        "miou_without_accessory": 0.8257291357533748,
+        "accessory": 0.0006681236340930378,
+        "metrics_file": "eval/eval-v2/dfmm/metrics.json"
+      }
+    }
+  }
+}

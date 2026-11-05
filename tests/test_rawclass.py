@@ -69,3 +69,50 @@ def test_headwear_summary_is_pixel_weighted():
     assert s["by_gt_hat"]["without_gt_hat"]["face"] == 1.0
     assert s["by_gt_hat"]["with_gt_hat"]["images"] == 1
     assert s["images_over_half_headwear"] == 1 and s["images_over_half_headwear_with_gt_hat"] == 1
+
+
+def test_box_stats_fill_and_around_share():
+    import numpy as np
+
+    from cloth_segment.rawclass import box_stats
+
+    # 4x4 mask: raw 5 (glasses) at two corners of a 2x3 box; raw 2 (face) inside the box.
+    raw = np.zeros((4, 4), dtype=np.uint8)
+    raw[1, 1] = raw[2, 3] = 5
+    raw[1, 2] = raw[2, 1] = 2
+    s = box_stats(raw, rid=5, around=2)
+    assert s["pixels"] == 2 and (s["box_h"], s["box_w"]) == (2, 3)
+    assert s["fill"] == 2 / 6 and s["around_share"] == 2 / 6
+    assert box_stats(raw, rid=9, around=2) is None
+
+
+def test_accessory_supply_skips_excluded_and_ignore():
+    import pandas as pd
+
+    from cloth_segment.rawclass import accessory_supply
+
+    def row(split, acc, other, ignore=0):
+        r = {"dataset": "dfmm", "split": split} | {f"c{i}": 0 for i in range(len(SHARED_CLASSES))}
+        return r | {f"c{ACCESSORY}": acc, "c0": other, "c255": ignore}
+
+    m = pd.DataFrame(
+        [row("train", 10, 90, ignore=500), row("train", 0, 100), row("excluded", 50, 50)]
+    )
+    t = accessory_supply(m).set_index("split")
+    assert list(t.index) == ["train"]
+    r = t.loc["train"]
+    assert r["images"] == 2 and r["images_with_accessory"] == 1 and r["pct_images"] == 50.0
+    assert r["accessory_pixels"] == 10 and r["pct_labelled_pixels"] == 100 * 10 / 200
+
+
+def test_miou_without_uses_present_classes_only():
+    from cloth_segment.rawclass import miou_without
+
+    names = ["a", "b", "absent", "accessory"]
+    cm = [[5, 0, 0, 0], [0, 5, 0, 0], [0, 0, 0, 0], [0, 1, 0, 1]]
+    m = {"miou": 0.6, "iou": {"a": 1.0, "b": 0.5, "absent": 0.0, "accessory": 0.3}}
+    m["confusion_matrix"] = cm
+    assert list(m["iou"]) == names
+    r = miou_without(m)
+    assert r["miou_without_accessory"] == 0.75  # mean of a and b; `absent` has no GT pixels
+    assert r["accessory"] == 0.3 and r["miou_all"] == 0.6

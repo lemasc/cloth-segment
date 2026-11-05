@@ -207,6 +207,72 @@ def iter_predictions(model, loader: DataLoader, device, dtype):
             )
 
 
+def box_stats(raw: np.ndarray, rid: int, around: int) -> dict | None:
+    """Pixels of raw class `rid` in one raw mask, its bounding box, how much of
+    the box it fills, and the share of the box that is raw class `around`.
+    None if `rid` is absent."""
+    sel = raw == rid
+    if not sel.any():
+        return None
+    ys, xs = np.nonzero(sel)
+    y0, y1, x0, x1 = int(ys.min()), int(ys.max()) + 1, int(xs.min()), int(xs.max()) + 1
+    box = raw[y0:y1, x0:x1]
+    n = int(sel.sum())
+    return {
+        "pixels": n,
+        "box": (y0, y1, x0, x1),
+        "box_w": x1 - x0,
+        "box_h": y1 - y0,
+        "fill": n / box.size,
+        "around_share": int((box == around).sum()) / box.size,
+        "image_hw": raw.shape[:2],
+    }
+
+
+def accessory_supply(manifest: pd.DataFrame) -> pd.DataFrame:
+    """`accessory` images and pixels per dataset and split, from the splits manifest.
+
+    Excluded rows are dropped. "% of labelled pixels" counts shared classes only
+    (IGNORE pixels left out), the same pixels the metrics score.
+    """
+    cols = [f"c{i}" for i in range(NUM_CLASSES)]
+    rows = manifest[manifest["split"] != "excluded"]
+    out = []
+    for (ds, split), g in rows.groupby(["dataset", "split"], sort=False):
+        acc = g[f"c{ACCESSORY}"]
+        labelled = int(g[cols].to_numpy().sum())
+        out.append(
+            {
+                "dataset": ds,
+                "split": split,
+                "images": len(g),
+                "images_with_accessory": int((acc > 0).sum()),
+                "pct_images": 100 * float((acc > 0).mean()) if len(g) else 0.0,
+                "accessory_pixels": int(acc.sum()),
+                "pct_labelled_pixels": 100 * int(acc.sum()) / labelled if labelled else 0.0,
+            }
+        )
+    return pd.DataFrame(out)
+
+
+def miou_without(metrics: dict, drop: str = "accessory") -> dict:
+    """12-class mIoU, mIoU without `drop`, and `drop`'s IoU, from one `metrics.json`.
+
+    Same rule as `evaluate`: a class counts in the mean when it has ground-truth
+    pixels (row sum of the confusion matrix > 0).
+    """
+    names = list(metrics["iou"])
+    if drop not in names:
+        raise ValueError(f"{drop!r} is not a class in this metrics file")
+    present = [n for n, row in zip(names, metrics["confusion_matrix"], strict=True) if sum(row)]
+    kept = [metrics["iou"][n] for n in present if n != drop]
+    return {
+        "miou_all": metrics["miou"],
+        f"miou_without_{drop}": sum(kept) / len(kept) if kept else None,
+        drop: metrics["iou"][drop],
+    }
+
+
 def headwear_summary(df: pd.DataFrame) -> dict:
     """Pixel-weighted summary of one run's per-image sunglasses predictions.
 
