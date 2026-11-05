@@ -3,6 +3,11 @@
 > **Source of truth.** This file holds scope, decisions and task status only.
 > Session notes, findings and work-in-progress go in `docs/handoffs/`.
 > Update a task's status here when it changes. Do not add dates or schedules.
+>
+> Row types: **T / E** rows are implementation (code, config, tests, analysis).
+> **X** rows are experiments: one training or evaluation run, with its config,
+> run folder and report. **M** rows are decisions and data fixes. A run never
+> hides inside a `done` T row: it gets an X row (`CONTRIBUTING.md` section 2).
 
 ## Goal
 
@@ -50,11 +55,24 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T4 | Data loader (segmentation + DFMM attributes) and augmentation | done |
 | T5 | Training and evaluation pipeline (config-driven, shared by all models) | done |
 | T6 | Model A: U-Net (ResNet-34) | done |
-| T7 | Model B: DeepLabV3+ (ResNet-50) | todo |
-| T8 | Model C: SegFormer-B2 | todo |
+| T7 | Model B: DeepLabV3+ (ResNet-50): code, config, tests (training is X3) | todo |
+| T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | todo |
 | T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | todo |
 | T10 | Error analysis and limitations | todo |
 | T11 | Slides and README (usage, data sources, configuration) | todo |
+
+### Experiments (runs)
+
+A run is `done` when its run folder is finished and its report is merged. The
+run folder (D7) and the report are the record; the config hash is in
+`meta.json`. Needs: the T row that implements the model is `done`.
+
+| ID | Experiment | Config | Run folder · report | Status |
+|---|---|---|---|---|
+| X1 | U-Net R34, 40k, first baseline (`eval-v1`; superseded by X2) | `unet_r34.yaml` | `20261105-0323-7b1798b-unet-r34` · `reports/2026-11-05-T6-unet-r34-full-run.md` | done |
+| X2 | U-Net R34, 40k, retrain after M3/M4 (`eval-v2`, seeded init) | `unet_r34.yaml` | `20261105-1307-1acb88f-unet-r34` · `reports/2026-11-05-T6-unet-r34-retrain.md` | done |
+| X3 | DeepLabV3+ R50, 40k (needs T7) | `deeplabv3p_r50.yaml` | | todo |
+| X4 | SegFormer-B2, 40k (needs T8) | `segformer_b2.yaml` | | todo |
 
 ### Extensions (if time allows)
 
@@ -76,3 +94,4 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | M4 | Seed model initialisation; parameter count in `meta.json` | done |
 | M5 | EDA notebook section: which raw classes merge into each shared class, and at what ratio | done |
 | M6 | Check the `accessory` class: DFMM eyeglass masks, per-dataset counts, 11- vs 12-class mIoU | done |
+| M8 | Add experiment (X) rows to the plan; split T7/T8 into code and training; backfill X1, X2 | done |
