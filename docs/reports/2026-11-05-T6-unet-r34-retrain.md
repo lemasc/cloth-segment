@@ -81,8 +81,16 @@ run เดิม: จาก `eval/eval-v2/val/*/metrics.json` · run ใหม�
 `accessory` มีพิกเซลน้อยมากใน test: LIP 0.410%, CIHP 0.321%, DFMM 0.015% (จาก `gt_pixels`)
 
 ### กราฟของ run ใหม่ (32k–40k)
-กราฟอยู่นอก repo: `~/t6_retrain/curves_new.png` (train loss, val mIoU รายชุดทุก 4k, ส่วนที่เพิ่มต่อ 4k) และ `~/t6_retrain/lr_new.png`
-สคริปต์ที่ใช้อ่านไฟล์อย่างเดียว: `~/t6_retrain/analyze.py` ตารางเต็ม: `~/t6_retrain/compare.md`
+ตารางเต็มและกราฟสร้างใหม่ได้ด้วยคำสั่งนี้ (อ่าน run folder อย่างเดียว เขียนแค่ในโฟลเดอร์ output ที่ระบุ):
+
+```bash
+uv run python scripts/compare_runs.py 20261105-0323-7b1798b-unet-r34 20261105-1307-1acb88f-unet-r34 <out-dir>
+```
+
+- `<out-dir>/compare.md`: ตารางเต็ม (ทุกตัวเลขในหัวข้อ "ผล" อยู่ในไฟล์นี้)
+- `<out-dir>/curves_20261105-1307-1acb88f-unet-r34.png`: train loss, val mIoU รายชุดทุก 4k และส่วนที่เพิ่มต่อ 4k (แรเงา 8k step สุดท้าย)
+- `<out-dir>/lr_20261105-1307-1acb88f-unet-r34.png`: learning rate
+- ไม่ได้ commit รูปเข้า repo ให้ใช้ `<out-dir>` ที่อยู่นอก repo
 
 val mIoU ทุก 4k จาก `log.jsonl`:
 
