@@ -101,11 +101,13 @@ def test_run_section_is_not_hashed():
 # --- model registry -----------------------------------------------------------------
 
 
-def test_build_model_errors():
+def test_build_model_errors(monkeypatch):
+    # A fake planned name, so the test does not depend on which models are built yet.
+    monkeypatch.setattr(models, "PLANNED", {"future_model": "T99"})
     with pytest.raises(ValueError, match="no model.name"):
         build_model({"name": None})
-    with pytest.raises(NotImplementedError, match="T7"):
-        build_model({"name": "deeplabv3p_r50"})
+    with pytest.raises(NotImplementedError, match="T99"):
+        build_model({"name": "future_model"})
     with pytest.raises(ValueError, match="unknown"):
         build_model({"name": "nope"})
 

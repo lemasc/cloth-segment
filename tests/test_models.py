@@ -111,3 +111,51 @@ def test_count_parameters_trainable_only():
     m[0].requires_grad_(False)
     assert count_parameters(m) == 9 + 4
     assert count_parameters(m, trainable_only=True) == 4
+
+
+@pytest.fixture(scope="module")
+def deeplab():
+    m = build_model({"name": "deeplabv3p_r50", "pretrained": False})
+    return m.eval()
+
+
+# (1, 3, 100, 75) is not divisible by 16: bare smp.DeepLabV3Plus rejects it.
+@pytest.mark.parametrize("shape", [(2, 3, 64, 96), (1, 3, 100, 75), (1, 3, 33, 47)])
+def test_deeplabv3p_r50_output_shape(deeplab, shape):
+    with torch.no_grad():
+        out = deeplab(torch.randn(shape))
+    assert out.shape == (shape[0], NUM_CLASSES, *shape[2:])
+    assert out.dtype == torch.float32
+
+
+def test_deeplabv3p_r50_returns_logits_not_probabilities(deeplab):
+    with torch.no_grad():
+        out = deeplab(torch.randn(1, 3, 64, 64))
+    assert not torch.allclose(out.softmax(1).sum(1), out.sum(1))
+
+
+def test_deeplabv3p_r50_architecture(deeplab):
+    from cloth_segment.models.deeplab import OUTPUT_STRIDE
+
+    assert isinstance(deeplab, PadToMultiple)
+    assert deeplab.multiple == OUTPUT_STRIDE == 16
+    assert deeplab.net.encoder.output_stride == 16
+    # ResNet-50, not ResNet-34: layer1 uses bottleneck blocks (4x channel expansion).
+    assert deeplab.net.encoder.layer1[0].conv3.out_channels == 256
+
+
+def test_deeplabv3p_r50_trains_one_step_in_train_mode():
+    # Batch norm in the ASPP pooling branch fails on batch 1 (why train uses drop_last).
+    m = build_model({"name": "deeplabv3p_r50", "pretrained": False}).train()
+    out = m(torch.randn(2, 3, 64, 64))
+    out.sum().backward()
+    assert out.shape == (2, NUM_CLASSES, 64, 64)
+
+
+def test_deeplabv3p_r50_config():
+    cfg = yaml.safe_load((paths.CONFIGS / "deeplabv3p_r50.yaml").read_text())
+    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert cfg["model"]["name"] == "deeplabv3p_r50"
+    assert cfg["model"]["pretrained"] is True
+    cfg["model"]["pretrained"] = False  # no download in tests
+    assert isinstance(build_model(cfg["model"]), nn.Module)
