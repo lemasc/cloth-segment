@@ -1,0 +1,10 @@
+# T8 Model C: SegFormer-B2 (MiT-B2 encoder, ImageNet-pretrained, D5).
+# Overrides only model.*; shared fields stay in base.yaml.
+# lr stays at the base 1e-4, the same untuned value as U-Net (X2) and DeepLabV3+ (T7).
+# The original SegFormer recipe (lr 6e-5, head lr x10, no weight decay on norm
+# layers) is not used: it needs per-group optimizer settings that the other
+# models do not get.
+model:
+  name: segformer_b2
+  pretrained: true
+  classifier_dropout: 0.1   # Dropout2d before the classifier, as in the original B2
