@@ -5,6 +5,8 @@ One loop for every model (D5). Flow:
 1. Resolve the config (`runs.load_config`, enforces D5). If a finished clean
    run with the same hash exists, stop (D7 cache).
 2. On a GPU, take the shared GPU lock, then create the run folder.
+   The model is built right after `torch.manual_seed(seed)`, so its randomly
+   initialised layers (decoder, head) are the same on every run (M4).
 3. Train for `train.iters` optimizer steps: AdamW, linear warmup then poly
    decay, cross-entropy with IGNORE skipped, autocast per `train.amp`.
 4. Every `eval.every` steps and at the last step, score the internal val split
@@ -12,7 +14,8 @@ One loop for every model (D5). Flow:
    step) and `ckpt/best.pt` (model only, highest `eval.select` value, by
    default the mean of the per-dataset val mIoUs).
 5. Log to `log.jsonl` (one JSON object per line); write the result to
-   `meta.json` (`finished` or `failed`).
+   `meta.json` (`finished` or `failed`). `meta.json` also records the
+   parameter count (`params`, `trainable_params`), reported with results (D5).
 
 On CUDA, PyTorch is capped to the GPU memory free at start, so a batch that
 does not fit raises OOM instead of spilling into system RAM (WSL, T5 probe).
@@ -38,7 +41,7 @@ from torch.utils.data import DataLoader
 from cloth_segment import evaluate, runs
 from cloth_segment.data.dataset import SegDataset, collate, load_split, make_sampler
 from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
-from cloth_segment.models import build_model, logits_at
+from cloth_segment.models import build_model, count_parameters, logits_at
 
 LOSSES = ("ce",)
 
@@ -236,6 +239,12 @@ def fit(
     }
 
 
+def seeded_model(cfg: dict) -> nn.Module:
+    """Build `cfg["model"]` after seeding with `cfg["seed"]`: same seed, same initial weights."""
+    torch.manual_seed(cfg["seed"])
+    return build_model(cfg["model"])
+
+
 def _summary(val: dict, select: str, value: float | None) -> str:
     def f(x: float | None) -> str:
         return "undefined" if x is None else f"{x:.4f}"
@@ -251,7 +260,7 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
     slug = cfg["run"].get("slug") or Path(config).stem
     if (hit := runs.find_finished(runs.config_hash(cfg))) is not None:
         raise runs.AlreadyFinished(hit)
-    model = build_model(cfg["model"])  # fail before taking the lock or making a folder
+    model = seeded_model(cfg)  # fail before taking the lock or making a folder
     train_set = load_split(cfg, "train")
     val_set = load_split(cfg, cfg["eval"]["split"], train=False)
 
@@ -261,7 +270,13 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
         print(f"run: {run_dir}", flush=True)
         try:
             cap = cap_gpu_memory(device)
-            runs.update_meta(run_dir, device=str(device), gpu_cap_mib=cap)
+            runs.update_meta(
+                run_dir,
+                device=str(device),
+                gpu_cap_mib=cap,
+                params=count_parameters(model),
+                trainable_params=count_parameters(model, trainable_only=True),
+            )
             result = fit(cfg, run_dir, device, model=model, train_set=train_set, val_set=val_set)
         except BaseException as e:  # also Ctrl-C: the folder must not stay "running"
             runs.mark_failed(run_dir, f"{type(e).__name__}: {e}")
