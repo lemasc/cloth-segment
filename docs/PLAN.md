@@ -76,4 +76,4 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | M4 | Seed model initialisation; parameter count in `meta.json` | done |
 | M5 | EDA notebook section: which raw classes merge into each shared class, and at what ratio | done |
 | M6 | Check the `accessory` class: DFMM eyeglass masks, per-dataset counts, 11- vs 12-class mIoU | done |
-| M7 | Lock the iteration budget at 40k for T7/T8 (reopen only if T7 `best.pt` is step 40000 again) | doing |
+| M7 | Lock the iteration budget at 40k for T7/T8 (reopen only if T7 `best.pt` is step 40000 again) | done |
