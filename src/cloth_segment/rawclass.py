@@ -24,6 +24,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
@@ -33,6 +34,7 @@ from cloth_segment.data.labels import IGNORE, MAPPING, NUM_CLASSES, SHARED_CLASS
 from cloth_segment.data.sources import RAW_LABELS, list_pairs
 
 ACCESSORY = SHARED_CLASSES.index("accessory")
+KEY_CLASSES = ("accessory", "headwear", "face", "hair", "background")
 
 
 def accessory_raw_ids(dataset: str) -> dict[int, str]:
@@ -178,3 +180,63 @@ def tally_loader(model, loader: DataLoader, device, dtype, dataset: str) -> dict
             )
             tally.add(per_raw, fp)
     return tally.result()
+
+
+@torch.no_grad()
+def iter_predictions(model, loader: DataLoader, device, dtype):
+    """Yield (row index, pred, shared target, raw mask) per image, each (H, W) on `device`.
+
+    Same forward path as `tally_loader`; for per-image analysis and figures.
+    """
+    from cloth_segment.evaluate import autocast, restore_logits
+    from cloth_segment.models import logits_at
+
+    model.eval()
+    for batch in loader:
+        x = batch["image"].to(device, non_blocking=True)
+        with autocast(device, dtype):
+            logits = model(x)
+        logits = logits_at(logits.float(), x.shape[-2:])
+        for k in range(x.shape[0]):
+            full = restore_logits(logits[k], batch["valid_hw"][k], batch["orig_hw"][k])
+            yield (
+                int(batch["index"][k]),
+                full.argmax(0),
+                batch["orig_mask"][k].to(device),
+                batch["raw_mask"][k].to(device),
+            )
+
+
+def headwear_summary(df: pd.DataFrame) -> dict:
+    """Pixel-weighted summary of one run's per-image sunglasses predictions.
+
+    `df` has `sunglasses_px`, `hat_px_gt` and one `pred_<class>` share column
+    per shared class (shares of that image's sunglasses pixels). Shares are
+    weighted by sunglasses pixels, so they are pixel ratios over all images.
+    """
+
+    def share(sub: pd.DataFrame, col: str) -> float | None:
+        w = sub["sunglasses_px"].sum()
+        return float((sub[col] * sub["sunglasses_px"]).sum() / w) if w else None
+
+    hat = df["hat_px_gt"] > 0
+    head = df["pred_headwear"]
+    return {
+        "images": len(df),
+        "images_with_gt_hat": int(hat.sum()),
+        "pixel_share_all": {
+            c: share(df, f"pred_{c}")
+            for c in SHARED_CLASSES
+            if (share(df, f"pred_{c}") or 0) > 0.005
+        },
+        "by_gt_hat": {
+            tag: {
+                "images": len(sub),
+                "sunglasses_px": int(sub["sunglasses_px"].sum()),
+                **{c: share(sub, f"pred_{c}") for c in KEY_CLASSES},
+            }
+            for tag, sub in (("with_gt_hat", df[hat]), ("without_gt_hat", df[~hat]))
+        },
+        "images_over_half_headwear": int((head > 0.5).sum()),
+        "images_over_half_headwear_with_gt_hat": int(((head > 0.5) & hat).sum()),
+    }

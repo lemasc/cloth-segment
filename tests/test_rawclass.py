@@ -48,3 +48,24 @@ def test_class_absent_has_no_rates_and_no_division():
     t.add({3: torch.zeros(len(SHARED_CLASSES), dtype=torch.int64)}, 0)
     r = t.result()["raw_classes"]["glove"]
     assert r["gt_pixels"] == 0 and r["recall"] is None and r["image_hit_rate"] is None
+
+
+def test_headwear_summary_is_pixel_weighted():
+    import pandas as pd
+
+    from cloth_segment.rawclass import headwear_summary
+
+    cols = {f"pred_{c}": 0.0 for c in SHARED_CLASSES}
+    a = pd.DataFrame(
+        [
+            {"sunglasses_px": 100, "hat_px_gt": 50} | cols | {"pred_headwear": 1.0},
+            {"sunglasses_px": 300, "hat_px_gt": 0} | cols | {"pred_face": 1.0},
+        ]
+    )
+    s = headwear_summary(a)
+    assert s["pixel_share_all"]["headwear"] == 0.25
+    assert s["by_gt_hat"]["with_gt_hat"]["headwear"] == 1.0
+    assert s["by_gt_hat"]["without_gt_hat"]["headwear"] == 0.0
+    assert s["by_gt_hat"]["without_gt_hat"]["face"] == 1.0
+    assert s["by_gt_hat"]["with_gt_hat"]["images"] == 1
+    assert s["images_over_half_headwear"] == 1 and s["images_over_half_headwear_with_gt_hat"] == 1
