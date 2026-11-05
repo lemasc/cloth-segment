@@ -94,4 +94,5 @@ run folder (D7) and the report are the record; the config hash is in
 | M4 | Seed model initialisation; parameter count in `meta.json` | done |
 | M5 | EDA notebook section: which raw classes merge into each shared class, and at what ratio | done |
 | M6 | Check the `accessory` class: DFMM eyeglass masks, per-dataset counts, 11- vs 12-class mIoU | done |
+| M7 | Lock the iteration budget at 40k for X3/X4 (reopen only if X3 `best.pt` is step 40000 again) | done |
 | M8 | Add experiment (X) rows to the plan; split T7/T8 into code and training; backfill X1, X2 | done |
