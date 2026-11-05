@@ -72,7 +72,7 @@ run folder (D7) and the report are the record; the config hash is in
 | X1 | U-Net R34, 40k, first baseline (`eval-v1`; superseded by X2) | `unet_r34.yaml` | `20261105-0323-7b1798b-unet-r34` · `reports/2026-11-05-T6-unet-r34-full-run.md` | done |
 | X2 | U-Net R34, 40k, retrain after M3/M4 (`eval-v2`, seeded init) | `unet_r34.yaml` | `20261105-1307-1acb88f-unet-r34` · `reports/2026-11-05-T6-unet-r34-retrain.md` | done |
 | X3 | DeepLabV3+ R50, 40k (needs T7) | `deeplabv3p_r50.yaml` | | todo |
-| X4 | SegFormer-B2, 40k (needs T8) | `segformer_b2.yaml` | | todo |
+| X4 | SegFormer-B2, 40k (needs T8) | `segformer_b2.yaml` | | doing |
 
 ### Extensions (if time allows)
 
