@@ -1,10 +1,11 @@
 # Accessory class check (M6)
 
 ## In plain words
-Four checks on the `accessory` class. Steps 1–3 need no GPU. Step 4 ran inference on the two saved U-Net checkpoints (GPU lock taken, no training).
+Five checks on the `accessory` class. Steps 1–3 need no GPU. Steps 4 and 5 ran inference on the two saved U-Net checkpoints (GPU lock taken, no training).
 DFMM eyeglass labels look clean, so label noise does not explain why `accessory` fails on DFMM.
 DFMM has very little `accessory` data: 455 train images with it, and only 57 in val. Dropping `accessory` from the mean changes the run comparison from −0.0096 to −0.0008.
 Per raw class (step 4): the retrain lost the sunglasses/eyeglass class (recall 0.0–0.6% against 24–41% in the original run), and scarf is almost never found in either run (0–4%). Glove is found on LIP only, at about 14–15% in both runs.
+LIP sunglasses predicted as `headwear` (step 5): mostly images where the person also wears a hat or helmet, such as ski goggles on a helmet. Sunglasses on a bare face go to `face` in the retrain.
 These numbers support the 11-class reporting that the T6 retrain report already asks for.
 
 ## 1. DFMM eyeglass masks
@@ -77,8 +78,27 @@ Where the missed pixels go (largest shares, from the JSON; same in both runs unl
 - **Neither of the two classes you asked about is the problem.** DFMM gloves and tie have 0 test pixels. Glove on LIP is the only raw class both runs detect at the same level. This does not support dropping glove or tie.
 - **Why scarf and sunglasses fail the way they do is not tested.** The "where the pixels go" numbers show what they are confused with, not why. 39% of LIP sunglasses pixels being predicted `headwear` was unexpected and I have not looked at it.
 
+## 5. LIP sunglasses predicted as `headwear`
+Question from step 4: 39% of LIP sunglasses pixels were predicted `headwear` by the retrain. Script: `scripts/lip_sunglasses_headwear.py`; summary: `docs/reports/2026-11-05-M6-lip-sunglasses-headwear.json`. It covers the 679 LIP test images with raw class `sunglasses` (median mask 227 pixels). Both runs, `best.pt` step 40000, GPU lock taken.
+
+Where the sunglasses pixels go, split by whether the ground truth also has a `hat` in the image (shares of sunglasses pixels):
+
+| run | group | images | accessory | headwear | face | hair | background |
+|---|---|---|---|---|---|---|---|
+| retrain | hat in GT | 352 | 0.010 | **0.560** | 0.278 | 0.013 | 0.100 |
+| retrain | no hat in GT | 327 | 0.000 | 0.149 | **0.551** | 0.132 | 0.148 |
+| original | hat in GT | 352 | 0.172 | 0.466 | 0.197 | 0.015 | 0.094 |
+| original | no hat in GT | 327 | 0.340 | 0.062 | 0.323 | 0.132 | 0.115 |
+
+- Over half of the images (352 of 679) also have a hat. In the retrain, 179 images have more than half their sunglasses pixels predicted `headwear`, and 153 of those (85%) have a hat in the ground truth.
+- I viewed 12 montage images (4 with the most `headwear`, 8 from a seeded random sample; images not committed, licences). In all 4 of the worst cases the sunglasses are ski goggles or glasses on a helmet or hat, labelled `accessory` inside the head item. The retrain paints the whole head as `headwear`. The ground truth looked reasonable in all 12.
+- On a bare face the retrain predicts `face` for most sunglasses pixels (55%), and the original run finds some of them (34% `accessory`).
+
+What this says: the surprising `headwear` share is mostly a hat or helmet context effect, and the retrain's other main failure is small sunglasses absorbed into `face`. Both runs do worse with a hat present (original `accessory` 17% with a hat against 34% without).
+What it does not say: whether this is caused by input resolution, class imbalance or the loss. The LIP labelling convention (goggles on helmets count as sunglasses) is only what the viewed images show, not a checked rule.
+
 ## What is still unknown
-- Why LIP sunglasses are predicted `headwear` so often (view a few images).
+- Why small sunglasses are absorbed into `face` or `headwear` (resolution, loss and class weight are all untested).
 - Whether more steps (80k) would make scarf or sunglasses stable. Only two 40k checkpoints were measured.
 - Whether DFMM neckwear and tie masks are as clean as eyeglass. Not viewed.
 - Seed-to-seed spread of each raw class: two runs only, and the original run had no seed on model init.
