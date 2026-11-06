@@ -38,7 +38,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
 
-from cloth_segment import evaluate, runs
+from cloth_segment import evaluate, hardware, runs
 from cloth_segment.data.dataset import SegDataset, collate, load_split, make_sampler
 from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
 from cloth_segment.models import build_model, count_parameters, logits_at
@@ -274,6 +274,7 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
                 run_dir,
                 device=str(device),
                 gpu_cap_mib=cap,
+                **hardware.gpu_fields(device),
                 params=count_parameters(model),
                 trainable_params=count_parameters(model, trainable_only=True),
             )
