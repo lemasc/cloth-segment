@@ -56,7 +56,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T5 | Training and evaluation pipeline (config-driven, shared by all models) | done |
 | T6 | Model A: U-Net (ResNet-34) | done |
 | T7 | Model B: DeepLabV3+ (ResNet-50): code, config, tests (training is X3) | done |
-| T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | todo |
+| T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | done |
 | T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | todo |
 | T10 | Error analysis and limitations | todo |
 | T11 | Slides and README (usage, data sources, configuration) | todo |
@@ -96,3 +96,4 @@ run folder (D7) and the report are the record; the config hash is in
 | M6 | Check the `accessory` class: DFMM eyeglass masks, per-dataset counts, 11- vs 12-class mIoU | done |
 | M7 | Lock the iteration budget at 40k for X3/X4 (reopen only if X3 `best.pt` is step 40000 again) | done |
 | M8 | Add experiment (X) rows to the plan; split T7/T8 into code and training; backfill X1, X2 | done |
+| M9 | Record GPU name, memory, capability and driver in `meta.json`; backfill script for old runs | done |
