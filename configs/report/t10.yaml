@@ -15,3 +15,37 @@ zones:
   fracs: [0.005, 0.01, 0.02]
   headline: 0.01
   out_dir: analysis/T10/zones # under data/ (shared mount); one JSON per run and test set
+
+exclude: [accessory] # headline mIoU rule (M6), as in T9
+
+breakdown_dir: review/M10/breakdown # under data/; per-image counts (M10)
+
+# Scores by image size and shape (asked for in M1, M2 and T3). Each bucket is
+# scored like a test set (its images' pixel counts added up). DFMM images are all
+# 1101 x 750 with one person of similar size, so DFMM is left out of all three.
+buckets:
+  short_side:
+    title: "image short side (px)"
+    value: short_side
+    datasets: [lip, cihp]
+    edges: [0, 128, 192, 256, 384, 100000]
+    labels: ["<128", "128-191", "192-255", "256-383", ">=384"]
+  aspect:
+    title: "aspect ratio (height / width)"
+    value: aspect
+    datasets: [lip] # CIHP is almost all landscape
+    edges: [0, 1.25, 1.75, 2.5, 100]
+    labels: ["<1.25", "1.25-1.75", "1.75-2.5", ">=2.5"]
+  person_share:
+    title: "person area (non-background share of the image)"
+    value: person_share
+    datasets: [lip, cihp]
+    edges: [0, 0.2, 0.35, 0.5, 1.01]
+    labels: ["<20%", "20-35%", "35-50%", ">=50%"]
+
+review: configs/review/t10.yaml # CIHP dress review (samples and verdicts)
+
+out: # repo paths, committed (small JSON, Markdown and PNG; no dataset images)
+  json: docs/reports/2026-11-07-T10-results.json
+  tables: docs/reports/2026-11-07-T10-tables.md
+  figures: docs/reports/figures/T10
