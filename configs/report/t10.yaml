@@ -46,6 +46,8 @@ buckets:
 review: configs/review/t10.yaml # CIHP dress review (samples and verdicts)
 # Independent second reading of the same images (AI, did not see the verdicts).
 review_second: docs/reports/2026-11-07-T10-verdicts-second.csv
+# Images where every run misses the raw class (the pool the review's worst picks come from).
+review_proxy: {dataset: cihp, raw: [dress], below: 0.1}
 
 out: # repo paths, committed (small JSON, Markdown and PNG; no dataset images)
   json: docs/reports/2026-11-07-T10-results.json

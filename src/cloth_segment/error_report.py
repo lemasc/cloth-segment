@@ -164,6 +164,8 @@ def build(
                 a: bucket_scores(counts[a][d], vals, spec["edges"], spec["labels"], exclude)
                 for a in aliases
             }
+    if review is not None and review.get("proxy") is not None:
+        res["unanimous_miss"] = review["proxy"]
     if review is not None:
         res["review"] = review_summary(review["samples"], review["verdicts"], review["codes"])
         if review.get("second") is not None:
@@ -174,6 +176,27 @@ def build(
                 review["samples"], review["verdicts"], review["second"]
             )
     return res
+
+
+def unanimous_miss(recalls: Mapping[str, pd.DataFrame], below: float) -> dict:
+    """Images where every run's recall of a raw class is under `below`.
+
+    `recalls` maps run -> `review.per_image_recall` table of the same images.
+    Reports the image count and their share of the raw class's pixels.
+    """
+    frames = list(recalls.values())
+    for f in frames[1:]:
+        if not f["index"].equals(frames[0]["index"]):
+            raise ValueError("per-image tables cover different images")
+    miss = np.logical_and.reduce([f["recall"].to_numpy() < below for f in frames])
+    px = frames[0]["raw_px"].to_numpy()
+    return {
+        "images": len(px),
+        "missed_images": int(miss.sum()),
+        "missed_share_of_images": float(miss.mean()),
+        "missed_share_of_pixels": float(px[miss].sum() / px.sum()),
+        "below": below,
+    }
 
 
 def review_summary(samples: pd.DataFrame, verdicts: pd.DataFrame, codes: Mapping) -> dict:
@@ -285,6 +308,14 @@ def tables_markdown(res: Mapping) -> str:
                 md.append(f"| {a} | " + " | ".join(_f(r["miou_wo"]) for r in per[a]) + " |")
             md.append("")
 
+    if "unanimous_miss" in res:
+        u = res["unanimous_miss"]
+        md += [
+            f"\n## Images where every run finds under {u['below']:.0%} of the raw class\n",
+            f"{u['dataset']} {', '.join(u['raw'])}: {u['missed_images']} of {u['images']} images "
+            f"({u['missed_share_of_images']:.1%}), "
+            f"{u['missed_share_of_pixels']:.1%} of its pixels.",
+        ]
     if "review" in res:
         r = res["review"]
         md += [f"\n## CIHP dress review: {r['reviewed']} of {r['images']} images judged\n"]

@@ -16,7 +16,7 @@ import pandas as pd
 import yaml
 
 from cloth_segment import error_report, paths, results
-from cloth_segment.review import load_review_config, read_verdicts
+from cloth_segment.review import load_review_config, per_image_recall, read_verdicts
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -58,6 +58,23 @@ def main(argv: list[str] | None = None) -> int:
             else None
         ),
     }
+
+    pr = cfg["review_proxy"]
+    review["proxy"] = error_report.unanimous_miss(
+        {
+            al: per_image_recall(
+                pd.read_csv(
+                    bdir / r["name"] / pr["dataset"] / "per_image_raw.csv", dtype={"id": str}
+                ),
+                pd.read_csv(
+                    bdir / r["name"] / pr["dataset"] / "per_image_shared.csv", dtype={"id": str}
+                ),
+                pr["raw"],
+            )
+            for al, r in cfg["runs"].items()
+        },
+        pr["below"],
+    ) | {"dataset": pr["dataset"], "raw": pr["raw"]}
 
     res = error_report.build(cfg, zones, counts, sizes, review)
     out = {k: paths.REPO_ROOT / v for k, v in cfg["out"].items()}

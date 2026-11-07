@@ -152,3 +152,12 @@ def test_agreement_counts_same_verdicts_per_pick():
     assert ag["judged_by_both"] == 2 and ag["same"] == 1
     assert ag["per_pick"] == {"worst": 0, "random": 1}
     assert ag["differ"] == [{"key": "c:1", "pick": "worst", "a": "M", "b": "A"}]
+
+
+def test_unanimous_miss_needs_every_run_below():
+    a = pd.DataFrame({"index": [0, 1, 2], "raw_px": [10, 30, 60], "recall": [0.0, 0.05, 0.9]})
+    b = pd.DataFrame({"index": [0, 1, 2], "raw_px": [10, 30, 60], "recall": [0.0, 0.5, 0.0]})
+    u = error_report.unanimous_miss({"A": a, "B": b}, 0.1)
+    assert u["missed_images"] == 1 and u["missed_share_of_pixels"] == pytest.approx(0.1)
+    with pytest.raises(ValueError):
+        error_report.unanimous_miss({"A": a, "B": b.iloc[:2]}, 0.1)

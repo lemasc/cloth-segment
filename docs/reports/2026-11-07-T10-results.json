@@ -1522,6 +1522,17 @@
       }
     }
   },
+  "unanimous_miss": {
+    "images": 936,
+    "missed_images": 166,
+    "missed_share_of_images": 0.17735042735042736,
+    "missed_share_of_pixels": 0.09163453127140443,
+    "below": 0.1,
+    "dataset": "cihp",
+    "raw": [
+      "dress"
+    ]
+  },
   "review": {
     "images": 24,
     "reviewed": 24,
