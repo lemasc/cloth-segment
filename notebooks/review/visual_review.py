@@ -28,6 +28,7 @@ def _():
         raw_legend,
         raw_legend_html,
         read_verdicts,
+        shares_text,
         tally,
         verdict_shares,
         write_verdicts,
@@ -56,6 +57,7 @@ def _():
         raw_legend_html,
         re,
         read_verdicts,
+        shares_text,
         tally,
         verdict_shares,
         write_verdicts,
@@ -117,14 +119,17 @@ def _(
     ImageDraw,
     RAW_LABELS,
     crop_box,
+    legend_html,
     lru_cache,
     np,
     out_dir,
     outline,
     overlay,
+    pred_shares,
     raw_legend,
     raw_legend_html,
     runs,
+    shares_text,
 ):
     ZOOM_MARGIN = 0.25  # crop grows by this share of the region's size on each side
     ZOOM_MAX_AREA = 0.6  # no zoom when the crop would cover more of the image than this
@@ -154,7 +159,8 @@ def _(
     def render(dataset, index, image, mask, raw_mask, raw_names, panel_h, alpha):
         """Two rows: [context photo if zoomed] photo, ground truth, raw labels /
         one panel per run. Returns (image, info text, legend HTML of the raw
-        classes in the shown area)."""
+        classes in the shown area, legend HTML of the shared classes in the
+        shown area, per-run text of where the outlined pixels went)."""
         photo = np.asarray(Image.open(DATASETS / image).convert("RGB"))
         gt = np.asarray(Image.open(DATA / mask))
         raw = np.asarray(Image.open(DATASETS / raw_mask))
@@ -187,10 +193,12 @@ def _(
         top += [_label(_fit(photo[y0:y1, x0:x1], panel_h), "zoom" if zoomed else "photo")]
         top.append(_panel(gt, "ground truth"))
         top.append(_panel(raw, f"raw labels ({dataset})", raw_colours=True))
-        bottom = []
+        bottom, seen, where = [], set(np.unique(gt[y0:y1, x0:x1]).tolist()), []
         for alias in runs:
             pred = np.asarray(Image.open(out_dir / "pred" / alias / dataset / f"{index}.png"))
             bottom.append(_panel(pred, alias))
+            seen |= set(np.unique(pred[y0:y1, x0:x1]).tolist())
+            where.append(f"**{alias}**: {shares_text(pred_shares(raw, pred, ids))}")
         rows = [_row(top, panel_h), _row(bottom, panel_h)]
         canvas = Image.new("RGB", (max(r.width for r in rows), 2 * panel_h + GAP), "white")
         canvas.paste(rows[0], (0, 0))
@@ -202,7 +210,7 @@ def _(
             + f", shown ×{scale:.2f}"
         )
         legend = raw_legend_html(raw_legend(raw[y0:y1, x0:x1], dataset))
-        return canvas, info, legend
+        return canvas, info, legend, legend_html(sorted(seen)), " · ".join(where)
 
     return (render,)
 
@@ -272,7 +280,7 @@ def _(cfg, mask_alpha, mo, panel_size, re, read_verdicts, render, samples, verdi
     )
 
     def _image(q, r):
-        img, info, legend = render(
+        img, info, legend, colours, where = render(
             r.dataset,
             r.index,
             r.image,
@@ -299,7 +307,11 @@ def _(cfg, mask_alpha, mo, panel_size, re, read_verdicts, render, samples, verdi
             [
                 mo.md(f"{info} · click the image to open it full size"),
                 link,
+                mo.Html(
+                    f"<small>Colours in view (ground truth and predictions): {colours}</small>"
+                ),
                 mo.Html(f"<small>Raw labels in view: {legend}</small>"),
+                mo.md(f"Outlined pixels predicted as: {where}"),
             ]
         )
 

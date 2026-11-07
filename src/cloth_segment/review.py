@@ -293,16 +293,28 @@ def raw_legend_html(items: list[dict]) -> str:
     return "<div>" + "".join(chip(it) for it in items if it["raw_id"] != 0) + "</div>"
 
 
-def legend_html() -> str:
+def legend_html(classes: list[int] | None = None) -> str:
+    """Colour chips of the shared classes (default: all but background).
+
+    `classes` limits the chips to those ids, e.g. the classes visible in one
+    image; background (0) never gets a chip, it is drawn as the photo.
+    """
+    ids = range(len(SHARED_CLASSES)) if classes is None else sorted(set(classes))
     chips = "".join(
         f'<span style="display:inline-block;margin:0 10px 4px 0">'
         f'<span style="display:inline-block;width:12px;height:12px;'
         f"background:rgb{tuple(int(v) for v in PALETTE[i])};border:1px solid #888;"
-        f'vertical-align:middle;margin-right:4px"></span>{name}</span>'
-        for i, name in enumerate(SHARED_CLASSES)
-        if i
+        f'vertical-align:middle;margin-right:4px"></span>{SHARED_CLASSES[i]}</span>'
+        for i in ids
+        if i and i != IGNORE
     )
     return f"<div>{chips}<span>(background = photo, grey = ignored)</span></div>"
+
+
+def shares_text(shares: dict[str, float], min_share: float = 0.05) -> str:
+    """`pred_shares` of one image as text, largest first, e.g. "upper 81% · dress 12%"."""
+    items = sorted(((v, c) for c, v in shares.items() if v == v and v >= min_share), reverse=True)
+    return " · ".join(f"{c} {v:.0%}" for v, c in items) or "-"
 
 
 # ------------------------------------------------------------ comparison grids (T9)

@@ -313,3 +313,20 @@ def test_comparison_grid_size_and_checks():
     assert im.mode == "RGB" and im.height > 2 * 80
     with pytest.raises(ValueError):
         comparison_grid([row], ["photo", "gt"], panel_h=80)
+
+
+def test_legend_html_limits_chips_and_skips_background():
+    from cloth_segment.review import legend_html
+
+    upper, dress = SHARED_CLASSES.index("upper"), SHARED_CLASSES.index("dress")
+    html = legend_html([0, dress, upper, IGNORE])
+    assert "upper" in html and "dress" in html and "pants" not in html
+    assert ">background<" not in html
+    assert all(c in legend_html() for c in SHARED_CLASSES[1:])
+
+
+def test_shares_text_sorts_and_drops_small_and_missing():
+    from cloth_segment.review import shares_text
+
+    assert shares_text({"upper": 0.81, "dress": 0.12, "skin": 0.01}) == "upper 81% · dress 12%"
+    assert shares_text({"upper": float("nan")}) == "-"
