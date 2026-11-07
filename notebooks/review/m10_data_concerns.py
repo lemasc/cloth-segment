@@ -402,9 +402,35 @@ def _(mo):
 
 
 @app.cell
-def _(cfg, mo, samples, saved_map):
+def _(cfg, mo, saved_map):
+    def _decision_ui(d, spec):
+        boxes = {
+            k: mo.ui.checkbox(label=text, value=saved_map.get((d, k), ("", ""))[0] == "x")
+            for k, text in spec["options"].items()
+        }
+        note = saved_map.get((d, "note"), ("", ""))[1]
+        return mo.ui.dictionary(
+            boxes
+            | {"note": mo.ui.text_area(value=note, placeholder="note (optional)", full_width=True)}
+        )
+
+    decision_ui = mo.ui.dictionary({d: _decision_ui(d, s) for d, s in cfg["decisions"].items()})
+    return (decision_ui,)
+
+
+@app.cell
+def _(cfg, mask_alpha, mo, panel_size, read_verdicts, render, samples, verdict_path):
+    # The verdict widgets are created here, in the cell that shows them: marimo
+    # does not rerun the cell that defines a widget when its value changes, so
+    # picking a verdict does not redraw the images. When a slider reruns this
+    # cell, the widgets start from the verdicts file, which every change has
+    # already been saved to.
+    _saved = {
+        (r.question, r.key): (r.verdict, r.note) for r in read_verdicts(verdict_path).itertuples()
+    }
+
     def _verdict_ui(q, key, codes):
-        v, note = saved_map.get((q, key), ("", ""))
+        v, note = _saved.get((q, key), ("", ""))
         options = {"(no verdict)": ""} | {f"{c}: {t}": c for c, t in codes.items()}
         label = next((lab for lab, c in options.items() if c == v), "(no verdict)")
         return mo.ui.dictionary(
@@ -426,27 +452,7 @@ def _(cfg, mo, samples, saved_map):
         }
     )
 
-    def _decision_ui(d, spec):
-        boxes = {
-            k: mo.ui.checkbox(label=text, value=saved_map.get((d, k), ("", ""))[0] == "x")
-            for k, text in spec["options"].items()
-        }
-        note = saved_map.get((d, "note"), ("", ""))[1]
-        return mo.ui.dictionary(
-            boxes
-            | {"note": mo.ui.text_area(value=note, placeholder="note (optional)", full_width=True)}
-        )
-
-    decision_ui = mo.ui.dictionary({d: _decision_ui(d, s) for d, s in cfg["decisions"].items()})
-    return decision_ui, review_ui
-
-
-@app.cell
-def _(cfg, mask_alpha, mo, panel_size, render, review_ui, samples):
-    def _sample_view(q, r):
-        recall = " / ".join(
-            f"{c[7:]} {getattr(r, c):.2f}" for c in samples.columns if c.startswith("recall_")
-        )
+    def _image(q, r):
         img, info = render(
             r.dataset,
             r.index,
@@ -457,14 +463,19 @@ def _(cfg, mask_alpha, mo, panel_size, render, review_ui, samples):
             panel_size.value,
             mask_alpha.value,
         )
+        return mo.vstack([mo.md(info), mo.image(img)])
+
+    def _sample_view(q, r):
+        recall = " / ".join(
+            f"{c[7:]} {getattr(r, c):.2f}" for c in samples.columns if c.startswith("recall_")
+        )
         head = mo.md(
-            f"**{r.key}** · id `{r.id}` · picked: {r.pick} · area {r.share:.2%}"
-            f" · recall {recall} · {info}"
+            f"**{r.key}** · id `{r.id}` · picked: {r.pick} · area {r.share:.2%} · recall {recall}"
         )
         ui = review_ui[q][r.key]
-        return mo.vstack(
-            [head, mo.image(img), mo.hstack([ui["verdict"], ui["note"]], widths=[1, 2])]
-        )
+        # drawn only when scrolled into view
+        img = mo.lazy(lambda: _image(q, r), show_loading_indicator=True)
+        return mo.vstack([head, img, mo.hstack([ui["verdict"], ui["note"]], widths=[1, 2])])
 
     _tabs = {}
     for _q, _spec in cfg["questions"].items():
@@ -483,10 +494,10 @@ def _(cfg, mask_alpha, mo, panel_size, render, review_ui, samples):
         [
             mo.md("## 3. Visual review"),
             mo.hstack([panel_size, mask_alpha], justify="start"),
-            mo.ui.tabs(_tabs),
+            mo.ui.tabs(_tabs, lazy=True),
         ]
     )
-    return
+    return (review_ui,)
 
 
 @app.cell
