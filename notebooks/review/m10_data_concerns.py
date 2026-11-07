@@ -35,6 +35,7 @@ def _():
         size_table,
         socks_context,
         tally,
+        verdict_shares,
         write_verdicts,
     )
 
@@ -70,6 +71,7 @@ def _():
         size_table,
         socks_context,
         tally,
+        verdict_shares,
         write_verdicts,
     )
 
@@ -685,23 +687,27 @@ def _(DATASETS, Image, RAW_LABELS, cfg, np, out_dir, pd, pred_shares, samples):
 
 
 @app.cell
-def _(SHARED_CLASSES, cfg, mo, target_shares, verdict_table):
-    _v = verdict_table[verdict_table["verdict"] != ""][["question", "key", "verdict"]]
-    _m = target_shares.merge(_v, on=["question", "key"])
+def _(SHARED_CLASSES, cfg, mo, target_shares, verdict_shares, verdict_table):
+    _all = verdict_shares(target_shares, verdict_table)
     _cls = list(SHARED_CLASSES)
     _parts = [
         mo.md(
             "### Where the target pixels go, per verdict\n\n"
             "Mean over images of the share of the question's raw-class pixels that "
-            "each run predicts as each shared class. Classes below 0.04 everywhere are hidden."
+            "each run predicts as each shared class, with the random and worst picks "
+            "kept apart. Classes below 0.04 everywhere are hidden.\n\n"
+            f"The worst images were picked by {cfg['rank_run']}'s recall, so "
+            f"{cfg['rank_run']}'s shares on them are low by construction. Only the "
+            "random picks show what is typical; mind the `images` count."
         )
     ]
     for _q, _spec in cfg["questions"].items():
-        _g = _m[_m["question"] == _q]
-        if _g.empty:
+        _t = _all[_all["question"] == _q].drop(columns="question")
+        if _t.empty:
             continue
-        _t = _g.groupby(["verdict", "run"])[_cls].mean().round(2)
-        _t = _t.loc[:, (_t > 0.04).any()].reset_index()
+        _t = _t.sort_values(["verdict", "pick", "run"]).round(2)
+        _keep = [c for c in _cls if (_t[c] > 0.04).any()]
+        _t = _t[["verdict", "pick", "run", "images", *_keep]].reset_index(drop=True)
         _parts += [mo.md(f"**{_spec['title']}**"), mo.ui.table(_t, selection=None)]
     mo.vstack(_parts)
     return

@@ -23,6 +23,7 @@ from cloth_segment.review import (
     socks_context,
     split_count,
     tally,
+    verdict_shares,
     write_verdicts,
 )
 
@@ -250,3 +251,36 @@ def test_pred_shares_only_counts_selected_raw_pixels():
     assert s[SHARED_CLASSES[4]] == 0.75 and s[SHARED_CLASSES[9]] == 0.25
     assert sum(s.values()) == 1.0
     assert np.isnan(pred_shares(raw, pred, [7])[SHARED_CLASSES[0]])
+
+
+def test_verdict_shares_keeps_pick_groups_apart():
+    def row(key, pick, run, upper):
+        return (
+            {"question": "q", "key": key, "pick": pick, "run": run}
+            | {c: 0.0 for c in SHARED_CLASSES}
+            | {"upper": upper, "outer": 1 - upper}
+        )
+
+    shares = pd.DataFrame(
+        [
+            row("lip:1", "worst", "X4", 1.0),
+            row("lip:2", "random", "X4", 0.2),
+            row("lip:3", "random", "X4", 0.4),
+            row("lip:3", "random", "X2", 0.0),
+            row("lip:4", "random", "X4", 0.9),
+        ]
+    )
+    v = pd.DataFrame(
+        {
+            "question": ["q"] * 4,
+            "key": ["lip:1", "lip:2", "lip:3", "lip:4"],
+            "verdict": ["O", "O", "O", ""],
+            "note": [""] * 4,
+        }
+    )
+    t = verdict_shares(shares, v).set_index(["verdict", "pick", "run"])
+    assert len(t) == 3  # lip:4 has no verdict
+    assert t.loc[("O", "worst", "X4"), "upper"] == 1.0
+    assert t.loc[("O", "random", "X4"), "upper"] == pytest.approx(0.3)
+    assert t.loc[("O", "random", "X4"), "images"] == 2
+    assert t.loc[("O", "random", "X2"), "images"] == 1

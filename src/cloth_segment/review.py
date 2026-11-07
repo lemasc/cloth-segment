@@ -155,6 +155,25 @@ def pred_shares(raw: np.ndarray, pred: np.ndarray, raw_ids: list[int]) -> dict[s
     return {c: (counts[i] / n if n else np.nan) for i, c in enumerate(SHARED_CLASSES)}
 
 
+def verdict_shares(shares: pd.DataFrame, verdicts: pd.DataFrame) -> pd.DataFrame:
+    """Mean `pred_shares` per question, verdict, pick group and run.
+
+    `shares` has one row per image and run (`question`, `key`, `pick`, `run`
+    and one column per shared class); `verdicts` is the verdict table. Images
+    without a verdict are left out. `images` counts the images in each row.
+
+    The pick groups stay apart: "worst" images were chosen by the rank run's
+    recall, so that run's shares on them are low by construction. Only the
+    "random" group shows what is typical.
+    """
+    v = verdicts.loc[verdicts["verdict"] != "", ["question", "key", "verdict"]]
+    m = shares.merge(v, on=["question", "key"], how="inner")
+    keys = ["question", "verdict", "pick", "run"]
+    out = m.groupby(keys)[list(SHARED_CLASSES)].mean()
+    out.insert(0, "images", m.groupby(keys)["key"].nunique())
+    return out.reset_index()
+
+
 def split_count(n: int, parts: int) -> list[int]:
     """`n` spread over `parts` as evenly as possible, earlier parts first."""
     return [n // parts + (i < n % parts) for i in range(parts)]
