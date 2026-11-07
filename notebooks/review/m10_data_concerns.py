@@ -92,9 +92,11 @@ def _(cfg, legend_html, mo, runs, samples, verdict_path):
     and tick is saved at once to `{cfg["verdicts"]}`; commit that file. Nothing
     else is written.
 
-    **Pictures.** Per image, left to right: the full photo (yellow box = the
-    zoomed area), then the zoomed photo, ground truth and each model's
-    prediction. The white outline marks the raw class being asked about.
+    **Pictures.** Per image, two rows. Top: the photo and the ground truth;
+    when the class is small, a zoomed view plus the full photo (yellow box =
+    zoomed area). Bottom: each model's prediction of the same area. The white
+    outline marks the raw class being asked about. Use the sliders above the
+    tabs for panel size and mask opacity; the header says the native size and scale.
     {len(samples)} samples, picked by `scripts/review_predictions.py`
     (`configs/review/m10.yaml`): per question, the images with the lowest
     {cfg["rank_run"]} recall ("worst") plus random ones ("random"), so label
@@ -306,11 +308,13 @@ def _(
     overlay,
     runs,
 ):
-    PANEL_H = 260
+    ZOOM_MARGIN = 0.25  # crop grows by this share of the region's size on each side
+    ZOOM_MAX_AREA = 0.6  # no zoom when the crop would cover more of the image than this
+    GAP = 6
 
-    def _fit(arr, h=PANEL_H):
+    def _fit(arr, h, resample=Image.LANCZOS):
         im = Image.fromarray(arr)
-        return im.resize((max(1, round(im.width * h / im.height)), h), Image.BILINEAR)
+        return im.resize((max(1, round(im.width * h / im.height)), h), resample)
 
     def _label(im, text):
         d = ImageDraw.Draw(im)
@@ -318,44 +322,83 @@ def _(
         d.text((4, 2), text, fill=(255, 255, 255))
         return im
 
-    @lru_cache(maxsize=256)
-    def render(dataset, index, image, mask, raw_mask, raw_names):
-        photo = np.asarray(Image.open(DATASETS / image).convert("RGB"))
-        gt = np.asarray(Image.open(DATA / mask))
-        raw = np.asarray(Image.open(DATASETS / raw_mask))
-        ids = [r for r, n in RAW_LABELS[dataset].items() if n in raw_names]
-        region = np.isin(raw, ids)
-        y0, y1, x0, x1 = crop_box(region)
-        edge = outline(region[y0:y1, x0:x1], width=2)
-
-        def _panel(m, title):
-            arr = overlay(photo[y0:y1, x0:x1], m[y0:y1, x0:x1])
-            arr[edge] = 255
-            return _label(_fit(arr), title)
-
-        full = _fit(photo)
-        s = PANEL_H / photo.shape[0]
-        ImageDraw.Draw(full).rectangle(
-            (x0 * s, y0 * s, x1 * s, y1 * s), outline=(255, 220, 0), width=3
-        )
-        panels = [
-            _label(full, "photo"),
-            _label(_fit(photo[y0:y1, x0:x1]), "zoom"),
-            _panel(gt, "ground truth"),
-        ]
-        for alias in runs:
-            pred = np.asarray(Image.open(out_dir / "pred" / alias / dataset / f"{index}.png"))
-            panels.append(_panel(pred, alias))
+    def _row(panels, h):
         canvas = Image.new(
-            "RGB", (sum(p.width for p in panels) + 6 * (len(panels) - 1), PANEL_H), "white"
+            "RGB", (sum(p.width for p in panels) + GAP * (len(panels) - 1), h), "white"
         )
         x = 0
         for p in panels:
             canvas.paste(p, (x, 0))
-            x += p.width + 6
+            x += p.width + GAP
         return canvas
 
+    @lru_cache(maxsize=512)
+    def render(dataset, index, image, mask, raw_mask, raw_names, panel_h, alpha):
+        """Two rows: [context photo if zoomed] photo, ground truth / one panel per run.
+
+        Panels are resized to `panel_h` (photos with Lanczos, masks blended
+        at native size first); the outline is drawn after resizing so it stays
+        2 px wide. Returns (image, info text).
+        """
+        photo = np.asarray(Image.open(DATASETS / image).convert("RGB"))
+        gt = np.asarray(Image.open(DATA / mask))
+        raw = np.asarray(Image.open(DATASETS / raw_mask))
+        h, w = gt.shape
+        ids = [r for r, n in RAW_LABELS[dataset].items() if n in raw_names]
+        region = np.isin(raw, ids)
+        y0, y1, x0, x1 = crop_box(region, margin=ZOOM_MARGIN)
+        zoomed = (y1 - y0) * (x1 - x0) <= ZOOM_MAX_AREA * h * w
+        if not zoomed:
+            y0, y1, x0, x1 = 0, h, 0, w
+        crop_region = Image.fromarray(region[y0:y1, x0:x1].astype(np.uint8) * 255)
+        cw = max(1, round((x1 - x0) * panel_h / (y1 - y0)))
+        edge = outline(np.asarray(crop_region.resize((cw, panel_h), Image.NEAREST)) > 0, width=2)
+
+        def _panel(m, title):
+            arr = np.asarray(
+                _fit(overlay(photo[y0:y1, x0:x1], m[y0:y1, x0:x1], alpha), panel_h)
+            ).copy()
+            arr[edge] = 255
+            return _label(Image.fromarray(arr), title)
+
+        top = []
+        if zoomed:
+            ctx = _fit(photo, panel_h)
+            s = panel_h / h
+            ImageDraw.Draw(ctx).rectangle(
+                (x0 * s, y0 * s, x1 * s, y1 * s), outline=(255, 220, 0), width=3
+            )
+            top.append(_label(ctx, "full photo"))
+        top += [_label(_fit(photo[y0:y1, x0:x1], panel_h), "zoom" if zoomed else "photo")]
+        top.append(_panel(gt, "ground truth"))
+        bottom = []
+        for alias in runs:
+            pred = np.asarray(Image.open(out_dir / "pred" / alias / dataset / f"{index}.png"))
+            bottom.append(_panel(pred, alias))
+        rows = [_row(top, panel_h), _row(bottom, panel_h)]
+        canvas = Image.new("RGB", (max(r.width for r in rows), 2 * panel_h + GAP), "white")
+        canvas.paste(rows[0], (0, 0))
+        canvas.paste(rows[1], (0, panel_h + GAP))
+        scale = panel_h / (y1 - y0)
+        info = (
+            f"native {w}×{h}"
+            + (f", zoom {x1 - x0}×{y1 - y0}" if zoomed else "")
+            + f", shown ×{scale:.2f}"
+        )
+        return canvas, info
+
     return (render,)
+
+
+@app.cell
+def _(mo):
+    panel_size = mo.ui.slider(
+        260, 800, step=20, value=480, label="Panel height (px)", show_value=True
+    )
+    mask_alpha = mo.ui.slider(
+        0.1, 0.9, step=0.05, value=0.45, label="Mask opacity", show_value=True
+    )
+    return mask_alpha, panel_size
 
 
 @app.cell
@@ -399,16 +442,24 @@ def _(cfg, mo, samples, saved_map):
 
 
 @app.cell
-def _(cfg, mo, render, review_ui, samples):
+def _(cfg, mask_alpha, mo, panel_size, render, review_ui, samples):
     def _sample_view(q, r):
         recall = " / ".join(
             f"{c[7:]} {getattr(r, c):.2f}" for c in samples.columns if c.startswith("recall_")
         )
-        head = mo.md(
-            f"**{r.key}** · id `{r.id}` · picked: {r.pick} · area {r.share:.2%} · recall {recall}"
+        img, info = render(
+            r.dataset,
+            r.index,
+            r.image,
+            r.mask,
+            r.raw_mask,
+            tuple(cfg["questions"][q]["raw"]),
+            panel_size.value,
+            mask_alpha.value,
         )
-        img = render(
-            r.dataset, r.index, r.image, r.mask, r.raw_mask, tuple(cfg["questions"][q]["raw"])
+        head = mo.md(
+            f"**{r.key}** · id `{r.id}` · picked: {r.pick} · area {r.share:.2%}"
+            f" · recall {recall} · {info}"
         )
         ui = review_ui[q][r.key]
         return mo.vstack(
@@ -428,7 +479,13 @@ def _(cfg, mo, render, review_ui, samples):
             ]
             + [_sample_view(_q, r) for r in _s.itertuples()]
         )
-    mo.vstack([mo.md("## 3. Visual review"), mo.ui.tabs(_tabs)])
+    mo.vstack(
+        [
+            mo.md("## 3. Visual review"),
+            mo.hstack([panel_size, mask_alpha], justify="start"),
+            mo.ui.tabs(_tabs),
+        ]
+    )
     return
 
 
