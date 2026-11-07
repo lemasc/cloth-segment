@@ -28,6 +28,7 @@ def _():
         outline,
         overlay,
         per_image_recall,
+        pred_shares,
         raw_legend,
         raw_legend_html,
         read_verdicts,
@@ -61,6 +62,7 @@ def _():
         overlay,
         pd,
         per_image_recall,
+        pred_shares,
         raw_legend,
         raw_legend_html,
         re,
@@ -656,6 +658,51 @@ def _(cfg, decision_ui, mo, pd, review_ui, samples, tally, verdict_path, write_v
             ),
         ]
     _parts.append(mo.md(f"_{'Saved' if _changed else 'No change'}: `{verdict_path.name}`_"))
+    verdict_table = _df
+    mo.vstack(_parts)
+    return (verdict_table,)
+
+
+@app.cell
+def _(DATASETS, Image, RAW_LABELS, cfg, np, out_dir, pd, pred_shares, samples):
+    # Where each run puts the pixels of the question's raw class, per image.
+    # Computed once; independent of the verdicts.
+    _rows = []
+    for _r in samples.itertuples():
+        _names = cfg["questions"][_r.question]["raw"]
+        _ids = [i for i, n in RAW_LABELS[_r.dataset].items() if n in _names]
+        _raw = np.asarray(Image.open(DATASETS / _r.raw_mask))
+        for _alias in cfg["runs"]:
+            _pred = np.asarray(
+                Image.open(out_dir / "pred" / _alias / _r.dataset / f"{_r.index}.png")
+            )
+            _rows.append(
+                {"question": _r.question, "key": _r.key, "pick": _r.pick, "run": _alias}
+                | pred_shares(_raw, _pred, _ids)
+            )
+    target_shares = pd.DataFrame(_rows)
+    return (target_shares,)
+
+
+@app.cell
+def _(SHARED_CLASSES, cfg, mo, target_shares, verdict_table):
+    _v = verdict_table[verdict_table["verdict"] != ""][["question", "key", "verdict"]]
+    _m = target_shares.merge(_v, on=["question", "key"])
+    _cls = list(SHARED_CLASSES)
+    _parts = [
+        mo.md(
+            "### Where the target pixels go, per verdict\n\n"
+            "Mean over images of the share of the question's raw-class pixels that "
+            "each run predicts as each shared class. Classes below 0.04 everywhere are hidden."
+        )
+    ]
+    for _q, _spec in cfg["questions"].items():
+        _g = _m[_m["question"] == _q]
+        if _g.empty:
+            continue
+        _t = _g.groupby(["verdict", "run"])[_cls].mean().round(2)
+        _t = _t.loc[:, (_t > 0.04).any()].reset_index()
+        _parts += [mo.md(f"**{_spec['title']}**"), mo.ui.table(_t, selection=None)]
     mo.vstack(_parts)
     return
 

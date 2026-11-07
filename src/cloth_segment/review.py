@@ -144,6 +144,17 @@ def socks_context(raw: pd.DataFrame, leg_share: float = 0.1) -> pd.DataFrame:
     return out.reset_index()
 
 
+def pred_shares(raw: np.ndarray, pred: np.ndarray, raw_ids: list[int]) -> dict[str, float]:
+    """Share of the pixels of `raw_ids` (raw mask) predicted as each shared class.
+
+    All NaN when the image has none of those pixels.
+    """
+    sel = np.isin(raw, raw_ids)
+    n = int(sel.sum())
+    counts = np.bincount(pred[sel].ravel(), minlength=NUM_CLASSES)[:NUM_CLASSES]
+    return {c: (counts[i] / n if n else np.nan) for i, c in enumerate(SHARED_CLASSES)}
+
+
 def split_count(n: int, parts: int) -> list[int]:
     """`n` spread over `parts` as evenly as possible, earlier parts first."""
     return [n // parts + (i < n % parts) for i in range(parts)]

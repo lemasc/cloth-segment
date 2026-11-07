@@ -15,6 +15,7 @@ from cloth_segment.review import (
     overlay,
     per_image_recall,
     pick_samples,
+    pred_shares,
     raw_legend,
     raw_legend_html,
     read_verdicts,
@@ -240,3 +241,12 @@ def test_socks_context_tights_like():
     assert not c.loc[1, "tights_like"]  # skirt, but 40 px of leg skin shows
     assert not c.loc[2, "tights_like"]  # no skirt or dress
     assert c.loc[0, "hit_px"] == 10 and c.loc[1, "leg_px"] == 40
+
+
+def test_pred_shares_only_counts_selected_raw_pixels():
+    raw = np.array([[5, 5, 5, 5, 0]], dtype=np.uint8)
+    pred = np.array([[4, 4, 4, 9, 4]], dtype=np.uint8)
+    s = pred_shares(raw, pred, [5])
+    assert s[SHARED_CLASSES[4]] == 0.75 and s[SHARED_CLASSES[9]] == 0.25
+    assert sum(s.values()) == 1.0
+    assert np.isnan(pred_shares(raw, pred, [7])[SHARED_CLASSES[0]])
