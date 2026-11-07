@@ -100,6 +100,65 @@ class RawClassTally:
         return {"false_positive_pixels": self.fp, "raw_classes": out}
 
 
+RAW_MAX = 256  # raw masks are 8-bit
+
+
+def raw_pred_matrix(pred: torch.Tensor, raw: torch.Tensor) -> torch.Tensor:
+    """(RAW_MAX, NUM_CLASSES) int64 counts: row = raw id, column = predicted shared class.
+
+    Covers every pixel, including raw classes that map to IGNORE.
+    """
+    if pred.shape != raw.shape:
+        raise ValueError(f"shapes differ: {tuple(pred.shape)} {tuple(raw.shape)}")
+    idx = raw.long().flatten() * NUM_CLASSES + pred.long().flatten()
+    return torch.bincount(idx, minlength=RAW_MAX * NUM_CLASSES).view(RAW_MAX, NUM_CLASSES)
+
+
+def shared_counts(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """(3, NUM_CLASSES) int64: ground-truth, predicted and true-positive pixels per class.
+
+    IGNORE pixels are skipped, as in `evaluate.confusion_matrix`, so the sums
+    over a test set equal the row sums, column sums and diagonal of its
+    saved confusion matrix.
+    """
+    if pred.shape != target.shape:
+        raise ValueError(f"shapes differ: {tuple(pred.shape)} {tuple(target.shape)}")
+    keep = target != IGNORE
+    t, p = target[keep].long(), pred[keep].long()
+    return torch.stack(
+        [
+            torch.bincount(t, minlength=NUM_CLASSES),
+            torch.bincount(p, minlength=NUM_CLASSES),
+            torch.bincount(t[t == p], minlength=NUM_CLASSES),
+        ]
+    )
+
+
+def raw_rows(matrix: torch.Tensor, dataset: str) -> list[dict]:
+    """One dict per raw class present in a `raw_pred_matrix` (one image or summed).
+
+    `hit_px` counts its pixels predicted as the shared class it maps to (None
+    for raw classes that map to IGNORE).
+    """
+    names, mapping = RAW_LABELS[dataset], MAPPING[dataset]
+    m = matrix.cpu()
+    out = []
+    for rid in torch.nonzero(m.sum(1)).flatten().tolist():
+        if rid not in names:
+            raise ValueError(f"{dataset}: raw id {rid} is not a known raw class")
+        sid = mapping.get(rid, IGNORE)
+        out.append(
+            {
+                "raw_id": rid,
+                "raw_name": names[rid],
+                "shared": SHARED_CLASSES[sid] if sid != IGNORE else None,
+                "raw_px": int(m[rid].sum()),
+                "hit_px": int(m[rid, sid]) if sid != IGNORE else None,
+            }
+        )
+    return out
+
+
 def _read_raw(path: Path) -> np.ndarray:
     with Image.open(path) as im:
         if im.mode not in ("L", "P"):
