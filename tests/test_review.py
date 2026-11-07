@@ -284,3 +284,32 @@ def test_verdict_shares_keeps_pick_groups_apart():
     assert t.loc[("O", "random", "X4"), "upper"] == pytest.approx(0.3)
     assert t.loc[("O", "random", "X4"), "images"] == 2
     assert t.loc[("O", "random", "X2"), "images"] == 1
+
+
+# ------------------------------------------------------------ comparison grids (T9)
+
+
+def test_image_miou_follows_the_evaluate_rule():
+    import torch
+
+    from cloth_segment.evaluate import confusion_matrix, scores
+    from cloth_segment.review import image_miou
+
+    rng = np.random.default_rng(0)
+    gt = rng.integers(0, 4, size=(6, 7)).astype(np.uint8)
+    gt[0, :3] = IGNORE
+    pred = rng.integers(0, 5, size=(6, 7)).astype(np.uint8)
+    ref = scores(confusion_matrix(torch.from_numpy(pred), torch.from_numpy(gt)))
+    assert image_miou(pred, gt) == pytest.approx(ref["miou"])
+    assert image_miou(pred, np.full_like(gt, IGNORE)) is None
+
+
+def test_comparison_grid_size_and_checks():
+    from cloth_segment.review import comparison_grid
+
+    photo = np.zeros((40, 20, 3), np.uint8)
+    row = {"label": "random\nlip #1", "panels": [photo, photo, photo], "captions": ["", "", "x"]}
+    im = comparison_grid([row, row], ["photo", "gt", "A"], panel_h=80, note="n")
+    assert im.mode == "RGB" and im.height > 2 * 80
+    with pytest.raises(ValueError):
+        comparison_grid([row], ["photo", "gt"], panel_h=80)
