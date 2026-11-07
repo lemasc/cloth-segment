@@ -114,6 +114,26 @@ def raw_pred_matrix(pred: torch.Tensor, raw: torch.Tensor) -> torch.Tensor:
     return torch.bincount(idx, minlength=RAW_MAX * NUM_CLASSES).view(RAW_MAX, NUM_CLASSES)
 
 
+BREAKDOWN_FILES = ("raw_confusion.json", "per_image_shared.csv", "per_image_raw.csv")
+
+
+def existing_breakdown(
+    out_dir: Path, run_names: Sequence[str], datasets: Sequence[str]
+) -> list[Path]:
+    """Breakdown files that already exist under `out_dir`/<run>/<dataset>/.
+
+    `scripts/raw_class_breakdown.py` refuses to start when this is not empty,
+    so earlier output on the shared mount is never overwritten.
+    """
+    return [
+        f
+        for run in run_names
+        for ds in datasets
+        for f in (Path(out_dir) / run / ds / name for name in BREAKDOWN_FILES)
+        if f.exists()
+    ]
+
+
 def shared_counts(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
     """(3, NUM_CLASSES) int64: ground-truth, predicted and true-positive pixels per class.
 

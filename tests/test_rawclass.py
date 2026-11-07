@@ -176,3 +176,15 @@ def test_raw_rows_rejects_unknown_raw_id():
     raw = torch.tensor([[200]], dtype=torch.uint8)
     with pytest.raises(ValueError, match="not a known raw class"):
         raw_rows(raw_pred_matrix(torch.tensor([[BG]]), raw), "lip")
+
+
+def test_existing_breakdown_lists_only_present_files(tmp_path):
+    from cloth_segment.rawclass import existing_breakdown
+
+    assert existing_breakdown(tmp_path, ["run-a"], ["lip", "cihp"]) == []
+    d = tmp_path / "run-a" / "cihp"
+    d.mkdir(parents=True)
+    (d / "per_image_raw.csv").write_text("x")
+    (d / "other.txt").write_text("x")
+    assert existing_breakdown(tmp_path, ["run-a"], ["lip", "cihp"]) == [d / "per_image_raw.csv"]
+    assert existing_breakdown(tmp_path, ["run-b"], ["cihp"]) == []

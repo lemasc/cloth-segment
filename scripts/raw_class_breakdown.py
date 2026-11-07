@@ -12,7 +12,12 @@ run and test set it writes, under OUT/<run>/<dataset>/:
 - `per_image_raw.csv`: per image and raw class present: raw pixels and pixels
   predicted as its shared class.
 
-Read-only on runs/ and data/. Pixel counts only, no images.
+Read-only on runs/ and data/ except OUT. Pixel counts only, no images. Never
+overwrites: if any output file already exists, it stops before taking the GPU
+lock (exit code 3); pick a new --out-dir.
+
+Exit codes: 0 done, 1 a cross-check failed (outputs are still written),
+2 GPU busy, 3 output exists.
 
 Usage: uv run python scripts/raw_class_breakdown.py RUN [RUN ...] --out-dir DIR
 """
@@ -34,6 +39,7 @@ from cloth_segment.data.labels import NUM_CLASSES, SHARED_CLASSES
 from cloth_segment.evaluate import amp_dtype, load_eval_set, load_model, metrics_path, resolve_run
 from cloth_segment.rawclass import (
     RAW_MAX,
+    existing_breakdown,
     iter_predictions,
     raw_loader,
     raw_pred_matrix,
@@ -110,11 +116,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--wait", action="store_true", help="wait for the GPU lock")
     args = ap.parse_args(argv)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    run_dirs = [resolve_run(name) for name in args.runs]
+    exists = existing_breakdown(args.out_dir, [r.name for r in run_dirs], args.datasets)
+    if exists:
+        print("output exists, use a new --out-dir:", *exists, sep="\n  ", file=sys.stderr)
+        return 3
     failed = False
     try:
         with runs.gpu_lock(run="raw-class-breakdown", wait=args.wait):
-            for name in args.runs:
-                run_dir = resolve_run(name)
+            for run_dir in run_dirs:
                 cfg = yaml.safe_load((run_dir / "config.yaml").read_text())
                 model, step = load_model(run_dir, cfg, device)
                 dtype = amp_dtype(cfg["train"]["amp"], device)
