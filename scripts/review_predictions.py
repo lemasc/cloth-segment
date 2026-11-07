@@ -43,7 +43,9 @@ from cloth_segment.review import load_review_config, per_image_recall, pick_samp
 
 def read_breakdown(base: Path, run: str, ds: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     d = base / run / ds
-    return pd.read_csv(d / "per_image_raw.csv"), pd.read_csv(d / "per_image_shared.csv")
+    # ids such as CIHP "0000001" must stay text, or the leading zeros are lost
+    kw = {"dtype": {"id": str}}
+    return pd.read_csv(d / "per_image_raw.csv", **kw), pd.read_csv(d / "per_image_shared.csv", **kw)
 
 
 def build_samples(cfg: dict) -> pd.DataFrame:
