@@ -1,169 +1,171 @@
-# M10 Data concerns from model results (X2–X4)
+# M10 ปัญหาของข้อมูลที่เห็นจากผลของโมเดล (X2–X4)
 
-Task M10, 2026-11-07. Handoff: `docs/handoffs/2026-11-07-M10-lemasc.md` (method, commands, gotchas).
+งาน M10 วันที่ 2026-11-07 handoff: `docs/handoffs/2026-11-07-M10-lemasc.md` (วิธีทำ คำสั่ง และข้อควรระวัง)
 
-**In short:** some weak classes come from the data, not the models.
+**สรุปสั้น ๆ:** คลาสที่คะแนนต่ำบางคลาสมีสาเหตุจากข้อมูล ไม่ใช่จากโมเดล
 
-- LIP jumpsuits and CIHP socks are label conflicts in the merged label set.
-- Skirt is lost to dress on the hardest images. On typical images the cause is mixed, and the best model (X4) loses it more to pants.
-- Outer → upper is mostly a model error.
+- jumpsuit ของ LIP และ socks ของ CIHP เป็น label ที่ขัดกันเมื่อรวมเป็นชุด label ร่วม
+- skirt ถูกทายเป็น dress ในรูปที่ยากที่สุด ส่วนในรูปทั่วไปมีหลายสาเหตุปนกัน และโมเดลที่ดีที่สุด (X4) เสีย skirt ให้ pants มากกว่า
+- outer ที่ถูกทายเป็น upper ส่วนใหญ่เป็นความผิดของโมเดล
 
-No retrain is needed. What T9 and T10 should do is listed under [Decisions](#decisions).
+ไม่ต้องเทรนใหม่ สิ่งที่ T9 และ T10 ต้องทำอยู่ในหัวข้อ "การตัดสินใจ" ด้านล่าง
 
-## Runs and sources
+## Run และแหล่งข้อมูล
 
-| Alias | Run | Model |
+| ชื่อย่อ | Run | โมเดล |
 |---|---|---|
 | X2 | `20261105-1307-1acb88f-unet-r34` | U-Net ResNet-34 |
 | X3 | `20261105-2050-f4e2ffe-deeplabv3p-r50` | DeepLabV3+ ResNet-50 |
 | X4 | `20261105-2220-ac9a26b-segformer-b2` | SegFormer-B2 |
 
-- **IoU:** from `runs/<run>/eval/eval-v2/<dataset>/metrics.json`.
-- **Raw-class and per-image counts:** from `scripts/raw_class_breakdown.py`, in `data/review/M10/breakdown/`. These counts sum to the saved metrics: X2 and X3 exactly, X4 within GPU numeric difference (handoff, Gotchas).
-- **Visual review:** `notebooks/review/m10_data_concerns.py`, config `configs/review/m10.yaml`. The verdicts and decisions are in `docs/reports/2026-11-07-M10-verdicts.csv`.
+- **IoU:** จาก `runs/<run>/eval/eval-v2/<dataset>/metrics.json`
+- **จำนวนพิกเซลต่อ raw class และต่อรูป:** จาก `scripts/raw_class_breakdown.py` เก็บใน `data/review/M10/breakdown/` ผลรวมของตัวเลขเหล่านี้ตรงกับ metrics ที่บันทึกไว้: X2 และ X3 ตรงทุกตัว X4 ต่างกันแค่ระดับความต่างเชิงตัวเลขของ GPU (ดู handoff หัวข้อ Gotchas)
+- **การดูรูปด้วยตา:** `notebooks/review/m10_data_concerns.py` ใช้ config `configs/review/m10.yaml` คำตัดสิน (verdict) และการตัดสินใจอยู่ใน `docs/reports/2026-11-07-M10-verdicts.csv`
 
-Values are X2 / X3 / X4 unless a table says otherwise. "Recall" of a raw class is the share of its pixels predicted as the shared class it maps to. A raw class is a class of the original dataset, before the merge into the 12 shared classes.
+ค่าเรียงเป็น X2 / X3 / X4 ถ้าตารางไม่ได้บอกเป็นอย่างอื่น
+- **raw class** คือคลาสของ dataset ต้นฉบับ ก่อนรวมเป็นคลาสร่วม 12 คลาส
+- **recall ของ raw class** คือสัดส่วนพิกเซลของมันที่โมเดลทายเป็นคลาสร่วมที่มัน map ไป
 
-## Questions
+## คำถาม
 
-| # | Question | Why it was raised |
+| # | คำถาม | ทำไมถึงสงสัย |
 |---|---|---|
-| Q1 | Is LIP `dress` weak because LIP maps jumpsuits to dress, while CIHP labels them as upper + pants? | LIP `dress` IoU 0.30 / 0.34 / 0.40, far below CIHP and DFMM. |
-| Q2 | Is CIHP `footwear` weak because feet are small, and do socks pull it down? | CIHP `footwear` IoU 0.40 / 0.42 / 0.50. Socks are 23% of CIHP footwear pixels. |
-| Q3 | Is skirt ↔ pants confusion partly shorts? LIP and CIHP have no shorts class. | `skirt` IoU 0.24–0.34 on LIP and CIHP; 17–28% of skirt pixels are predicted as pants. |
-| Q4 | Is upper ↔ outer confusion label ambiguity? | 10–18% of pixels go each way on LIP and CIHP, in all models. |
-| Q5 | Are X3's lower DFMM scores on fine classes real? | X3 − X2 on DFMM is −0.011 to −0.023 on hair, skin, footwear and headwear. |
-| Q6 | Can DFMM `accessory` IoU support any claim? | 0.0007 / 0.41 / 0.61. |
+| Q1 | LIP `dress` ต่ำเพราะ LIP map jumpsuit เป็น dress แต่ CIHP label jumpsuit เป็น upper + pants หรือเปล่า | IoU ของ LIP `dress` 0.30 / 0.34 / 0.40 ต่ำกว่า CIHP และ DFMM มาก |
+| Q2 | CIHP `footwear` ต่ำเพราะเท้าตัวเล็กหรือเปล่า และ socks ดึงคะแนนลงไหม | IoU ของ CIHP `footwear` 0.40 / 0.42 / 0.50 socks เป็น 23% ของพิกเซล footwear ใน CIHP |
+| Q3 | skirt สับสนกับ pants เพราะบางส่วนเป็นกางเกงขาสั้นหรือเปล่า LIP และ CIHP ไม่มีคลาส shorts | IoU ของ `skirt` 0.24–0.34 บน LIP และ CIHP พิกเซล skirt 17–28% ถูกทายเป็น pants |
+| Q4 | upper กับ outer สับสนกันเพราะ label กำกวมหรือเปล่า | บน LIP และ CIHP พิกเซล 10–18% ไหลไปมาทั้งสองทาง ในทุกโมเดล |
+| Q5 | คะแนน DFMM ของ X3 ที่ต่ำลงในคลาสเล็ก ๆ เป็นของจริงไหม | X3 − X2 บน DFMM อยู่ที่ −0.011 ถึง −0.023 ใน hair, skin, footwear และ headwear |
+| Q6 | IoU ของ `accessory` ใน DFMM ใช้สรุปอะไรได้ไหม | 0.0007 / 0.41 / 0.61 |
 
-## How the visual review was done
+## วิธีดูรูป
 
-- **Images:** 24 test images per question: 12 "worst" (lowest X4 recall of the raw class) and 12 random (seed 0). Each image covers at least `min_share` of the class.
-- **Who reviewed:** the maintainer reviewed every image of Q2, Q3 and Q4 (72 images).
-- **Q1:** not reviewed; it is answered from the numbers.
-- **Which half answers what:** only the random half shows how common a cause is. The worst half shows what the hardest failures look like.
+- **รูป:** รูป test 24 รูปต่อคำถาม คือ "แย่สุด" 12 รูป (recall ของ X4 ต่อ raw class นั้นต่ำที่สุด) และสุ่ม 12 รูป (seed 0) ทุกรูปมีคลาสนั้นอย่างน้อย `min_share` ของพื้นที่รูป
+- **ใครดู:** maintainer (ผู้ดูแลโปรเจกต์) ดูทุกรูปของ Q2, Q3 และ Q4 (72 รูป)
+- **Q1:** ไม่ได้ดูรูป ตอบจากตัวเลข
+- **ชุดไหนตอบอะไร:** ชุดสุ่มเท่านั้นที่บอกได้ว่าสาเหตุไหนพบบ่อย ชุดแย่สุดแสดงว่าจุดที่พลาดหนักที่สุดหน้าตาเป็นอย่างไร
 
-"Where the pixels go" tables show the mean, over the images of a verdict, of the share of the raw-class pixels that each run predicts as each shared class. They are in the notebook, section 4. The random and worst halves are kept apart: the worst images were picked by X4's recall, so X4's shares on them are low by construction. Some cells rest on one or two images; the counts are in the Random and Worst columns.
+ตาราง "พิกเซลไปที่ไหน" คือค่าเฉลี่ยของรูปทั้งหมดในคำตัดสินนั้น ของสัดส่วนพิกเซล raw class ที่แต่ละ run ทายเป็นแต่ละคลาสร่วม ตารางเหล่านี้อยู่ใน notebook หัวข้อ 4 แยกชุดสุ่มกับชุดแย่สุดออกจากกัน เพราะชุดแย่สุดเลือกจาก recall ของ X4 สัดส่วนของ X4 ในชุดนั้นจึงต่ำโดยวิธีเลือกอยู่แล้ว บางช่องมาจากแค่หนึ่งหรือสองรูป ดูจำนวนรูปได้ในคอลัมน์ สุ่ม และ แย่สุด
 
-## Findings
+## สิ่งที่พบ
 
-### Q1: yes, in part. LIP jumpsuits pull LIP `dress` down.
+### Q1: ใช่ บางส่วน jumpsuit ของ LIP ดึง LIP `dress` ลง
 
-| Raw class (test) | Maps to | Recall | Most of the rest goes to |
+| Raw class (test) | map เป็น | Recall | ที่เหลือส่วนใหญ่ไปที่ |
 |---|---|---|---|
 | LIP dress | dress | 0.49 / 0.55 / 0.60 | upper 0.16–0.21 |
 | LIP jumpsuits | dress | 0.24 / 0.39 / 0.42 | pants 0.19–0.26, upper 0.19–0.24 |
 | CIHP dress | dress | 0.64 / 0.68 / 0.70 | upper 0.12–0.14 |
 | DFMM rompers | dress | 0.93 / 0.95 / 0.95 | |
 
-- **The training data teaches two answers.** In the train split, jumpsuits are 27.3% of LIP `dress` pixels (390 images). CIHP has no jumpsuit class and labels them as upper + pants. The models often answer the CIHP way.
-- **One-piece garments are not hard in general.** DFMM rompers are found at 0.93–0.95.
-- **Jumpsuits explain only part of the gap.** Real LIP dresses are also below CIHP dresses.
+- **ข้อมูลเทรนสอนคำตอบไว้สองแบบ** ใน train split jumpsuit เป็น 27.3% ของพิกเซล `dress` ใน LIP (390 รูป) CIHP ไม่มีคลาส jumpsuit และ label เป็น upper + pants โมเดลจึงมักตอบแบบ CIHP
+- **ชุดชิ้นเดียวไม่ได้ยากเสมอไป** romper ของ DFMM หาได้ 0.93–0.95
+- **jumpsuit อธิบายช่องว่างได้แค่บางส่วน** เดรสจริงของ LIP ก็ยังต่ำกว่าเดรสของ CIHP
 
-### Q2: CIHP shoes are small; CIHP "socks" are often tights, long socks or bare-looking legs.
+### Q2: รองเท้าใน CIHP ตัวเล็ก ส่วน "socks" ใน CIHP มักเป็นถุงน่อง ถุงเท้ายาว หรือดูเหมือนขาเปล่า
 
-**Shoes:**
+**รองเท้า:**
 
-- Shoe recall rises with size in every dataset, and CIHP shoes are small: median 0.89% of the image, against 2.46% on LIP.
-- At the same size, CIHP stays below LIP by 0.05–0.18 for X2 and 0.01–0.08 for X4. The size is measured per image, and CIHP images often show several people, so part of that gap may also be size.
+- recall ของรองเท้าสูงขึ้นตามขนาดในทุก dataset และรองเท้าใน CIHP ตัวเล็ก: ค่ามัธยฐาน 0.89% ของรูป เทียบกับ 2.46% ใน LIP
+- ที่ขนาดเท่ากัน CIHP ยังต่ำกว่า LIP อยู่ 0.05–0.18 สำหรับ X2 และ 0.01–0.08 สำหรับ X4 แต่ขนาดวัดต่อรูป และรูป CIHP มักมีหลายคน ช่องว่างนี้จึงอาจมาจากขนาดได้บางส่วนเหมือนกัน
 
-**Socks:**
+**ถุงเท้า:**
 
-- CIHP socks recall is 0.25 / 0.32 / 0.45, against 0.71 / 0.69 / 0.77 on LIP.
-- **Proxy check:** an image counts as tights-like if it has a skirt or dress and little visible leg skin. Tights-like images make up 41% of CIHP socks pixels, against 6% on LIP.
+- recall ของ socks ใน CIHP คือ 0.25 / 0.32 / 0.45 เทียบกับ 0.71 / 0.69 / 0.77 ใน LIP
+- **ตรวจด้วยตัวชี้วัดแทน (proxy):** รูปที่นับว่า "คล้ายถุงน่อง" คือรูปที่มี skirt หรือ dress และเห็นผิวขาน้อย รูปคล้ายถุงน่องเป็น 41% ของพิกเซล socks ใน CIHP เทียบกับ 6% ใน LIP
 
-Review, 24 of 24:
+ผลการดูรูป 24 จาก 24:
 
-| Verdict | Random | Worst | Where the pixels go, X4, random | X4, worst |
+| คำตัดสิน | สุ่ม | แย่สุด | พิกเซลไปที่ไหน X4 ชุดสุ่ม | X4 ชุดแย่สุด |
 |---|---|---|---|---|
-| K: long socks, tights or stockings | 6 | 10 | footwear 0.44, pants 0.44 | pants 0.55, skin 0.26 |
-| L: wrong label (looks like bare skin) | 4 | 2 | skin 0.63, footwear 0.34 | pants 0.48, skin 0.48 |
-| S: short socks, clearly visible | 2 | 0 | footwear 0.69, skin 0.28 | |
-| M: clear socks, model mistake | 0 | 0 | | |
+| K: ถุงเท้ายาว ถุงน่อง หรือถุงน่องยาว | 6 | 10 | footwear 0.44, pants 0.44 | pants 0.55, skin 0.26 |
+| L: label ผิด (ดูเหมือนผิวหนังเปล่า) | 4 | 2 | skin 0.63, footwear 0.34 | pants 0.48, skin 0.48 |
+| S: ถุงเท้าสั้น มองเห็นชัด | 2 | 0 | footwear 0.69, skin 0.28 | |
+| M: ถุงเท้าชัดเจน โมเดลผิด | 0 | 0 | | |
 
-- **What CIHP labels as socks:** in 10 of 12 random images, it covers something that looks like trousers (K) or bare legs (L). The pixels the models miss go to exactly that: pants or skin. No image was a clear model mistake.
-- **Long socks are not always missed.** On the 6 random "K" images, X4 still predicts 0.44 of the socks pixels as footwear. The 0.00 on the worst "K" images comes from how they were picked.
-- **Where the review and the proxy agree, and where they don't:**
-  - The proxy flags all 4 random "L" images as tights-like. These are skin-coloured tights or bare legs labelled socks. Neither can be told apart from the image, and both have the same effect on the scores.
-  - The proxy undercounts long socks: 10 of the 16 "K" images have no skirt or dress, for example leggings under shorts.
-- **Clearly visible socks are found.** The 2 "S" images reach X4 recall 0.99 and 0.38.
+- **สิ่งที่ CIHP label เป็น socks:** ใน 10 จาก 12 รูปสุ่ม มันคือสิ่งที่ดูเหมือนกางเกง (K) หรือขาเปล่า (L) และพิกเซลที่โมเดลพลาดก็ไปอยู่ตรงนั้นพอดี คือ pants หรือ skin ไม่มีรูปไหนที่เป็นความผิดของโมเดลชัด ๆ
+- **ถุงเท้ายาวไม่ได้พลาดเสมอ** ใน 6 รูปสุ่มที่เป็น "K" X4 ยังทายพิกเซล socks เป็น footwear ได้ 0.44 ส่วนค่า 0.00 ในรูป "K" ของชุดแย่สุดมาจากวิธีเลือกรูป
+- **การดูรูปกับตัวชี้วัดแทนตรงกันตรงไหน และไม่ตรงตรงไหน:**
+  - ตัวชี้วัดแทนนับรูป "L" ในชุดสุ่มทั้ง 4 รูปว่าคล้ายถุงน่อง รูปเหล่านี้คือถุงน่องสีเนื้อหรือขาเปล่าที่ label เป็น socks ดูจากรูปแยกสองอย่างนี้ไม่ออก และทั้งสองแบบมีผลต่อคะแนนเหมือนกัน
+  - ตัวชี้วัดแทนนับถุงเท้ายาวต่ำไป: 10 จาก 16 รูป "K" ไม่มี skirt หรือ dress เช่น เลกกิ้งใต้กางเกงขาสั้น
+- **ถุงเท้าที่มองเห็นชัดหาเจอ** รูป "S" ทั้ง 2 รูปได้ recall ของ X4 0.99 และ 0.38
 
-### Q3: skirt is lost mostly to `dress`; pants come second, with mixed causes.
+### Q3: skirt ส่วนใหญ่หายไปเป็น `dress` รองลงมาคือ pants ซึ่งมีหลายสาเหตุ
 
-Review, 24 of 24:
+ผลการดูรูป 24 จาก 24:
 
-| Verdict | Random | Worst | Where the pixels go, X4, random | X4, worst |
+| คำตัดสิน | สุ่ม | แย่สุด | พิกเซลไปที่ไหน X4 ชุดสุ่ม | X4 ชุดแย่สุด |
 |---|---|---|---|---|
-| D: skirt vs dress unclear (looks one-piece) | 1 | 5 | outer 0.94 (1 image) | dress 0.99 |
-| Y: short skirt that looks like shorts | 6 | 0 | skirt 0.54, pants 0.24, outer 0.13 | |
-| M: clear skirt, model mistake | 3 | 6 | skirt 0.93 | dress 0.63, outer 0.16, pants 0.15 |
-| L: wrong label (shorts or trousers) | 2 | 1 | pants 0.42, upper 0.27, skirt 0.20 | pants 0.99 |
+| D: แยกไม่ออกว่า skirt หรือ dress (ดูเป็นชุดชิ้นเดียว) | 1 | 5 | outer 0.94 (1 รูป) | dress 0.99 |
+| Y: กระโปรงสั้นที่ดูเหมือนกางเกงขาสั้น | 6 | 0 | skirt 0.54, pants 0.24, outer 0.13 | |
+| M: กระโปรงชัดเจน โมเดลผิด | 3 | 6 | skirt 0.93 | dress 0.63, outer 0.16, pants 0.15 |
+| L: label ผิด (กางเกงขาสั้นหรือกางเกงขายาว) | 2 | 1 | pants 0.42, upper 0.27, skirt 0.20 | pants 0.99 |
 
-- **The worst images are lost to dress.** On the worst half, all runs predict 0.68–0.73 of the skirt pixels as dress and only 0.13–0.16 as pants. 5 of the 6 LIP worst images look like one-piece outfits labelled as skirt.
-- **No single cause dominates the random half.** Of 12 random images: 6 shorts-like (Y), 3 model mistakes (M), 2 wrong labels (L), 1 skirt-or-dress (D).
-- **On the random half, the runs differ.** Over all 12 random images, X2 predicts 0.33 of the skirt pixels as dress, X3 0.16 and X4 0.03. X4 loses more to pants (0.20).
-- **Clear skirts go to dress on hard images and for U-Net.** On the 3 random "M" images, X4 finds 0.93 of the skirt; X2 finds 0.16 and predicts 0.58 as dress. On the 6 worst "M" images, all runs predict 0.54–0.63 as dress.
-- **Where the pants confusion comes from:** shorts-like skirts and wrong labels.
-- **How the original question changes:** "skirt vs pants" is better described as "skirt vs dress on the hard images and for U-Net, then shorts". For X4 on typical images, the remaining loss is mostly to pants.
-- **Training data:** LIP has few skirts (535 train images, against 1,972 in CIHP). That may add to the low LIP score; the review cannot test it.
+- **รูปแย่สุดหายไปเป็น dress** ในชุดแย่สุด ทุก run ทายพิกเซล skirt เป็น dress 0.68–0.73 และเป็น pants แค่ 0.13–0.16 รูปแย่สุดของ LIP 5 จาก 6 รูปเป็นชุดที่ดูเป็นชิ้นเดียวแต่ label เป็น skirt
+- **ชุดสุ่มไม่มีสาเหตุไหนเด่น** จาก 12 รูปสุ่ม: ดูเหมือนกางเกงขาสั้น 6 รูป (Y) โมเดลผิด 3 รูป (M) label ผิด 2 รูป (L) และ skirt-หรือ-dress 1 รูป (D)
+- **ในชุดสุ่ม แต่ละ run ต่างกัน** ทั้ง 12 รูปสุ่ม X2 ทายพิกเซล skirt เป็น dress 0.33, X3 0.16 และ X4 0.03 แต่ X4 เสียให้ pants มากกว่า (0.20)
+- **กระโปรงชัดเจนหายไปเป็น dress ในรูปยากและใน U-Net** ใน 3 รูปสุ่ม "M" X4 หา skirt ได้ 0.93 แต่ X2 หาได้ 0.16 และทายเป็น dress 0.58 ใน 6 รูป "M" ของชุดแย่สุด ทุก run ทายเป็น dress 0.54–0.63
+- **ความสับสนกับ pants มาจากไหน:** กระโปรงที่ดูเหมือนกางเกงขาสั้น และ label ผิด
+- **คำถามเดิมควรเปลี่ยนเป็นอะไร:** "skirt กับ pants" ควรเป็น "skirt กับ dress ในรูปที่ยากและใน U-Net แล้วตามด้วยกางเกงขาสั้น" สำหรับ X4 ในรูปทั่วไป ส่วนที่ยังเสียอยู่ส่วนใหญ่ไปที่ pants
+- **ข้อมูลเทรน:** LIP มีกระโปรงน้อย (รูป train 535 รูป เทียบกับ 1,972 รูปใน CIHP) อาจทำให้คะแนน LIP ต่ำลงอีก แต่การดูรูปทดสอบข้อนี้ไม่ได้
 
-### Q4: outer → upper is mostly a model error.
+### Q4: outer ที่ถูกทายเป็น upper ส่วนใหญ่เป็นความผิดของโมเดล
 
-Review, 24 of 24:
+ผลการดูรูป 24 จาก 24:
 
-| Verdict | Random | Worst | Where the pixels go, random (X2 / X3 / X4) | Worst (X2 / X3 / X4) |
+| คำตัดสิน | สุ่ม | แย่สุด | พิกเซลไปที่ไหน ชุดสุ่ม (X2 / X3 / X4) | ชุดแย่สุด (X2 / X3 / X4) |
 |---|---|---|---|---|
-| O: clear outer layer, model mistake | 11 | 6 | outer 0.71 / 0.63 / 0.58, upper 0.20 / 0.28 / 0.34 | outer 0.15 / 0.30 / 0.00, upper 0.75 / 0.53 / 0.81 |
-| A: ambiguous garment | 1 | 4 | upper 0.92 / 0.78 / 0.18 (1 image) | upper 0.68 / 0.62 / 0.70, background ~0.31 |
-| U: not an outer layer | 0 | 2 | | upper 0.89 / 0.96 / 0.94 |
+| O: เสื้อคลุมชัดเจน โมเดลผิด | 11 | 6 | outer 0.71 / 0.63 / 0.58, upper 0.20 / 0.28 / 0.34 | outer 0.15 / 0.30 / 0.00, upper 0.75 / 0.53 / 0.81 |
+| A: เสื้อผ้ากำกวม | 1 | 4 | upper 0.92 / 0.78 / 0.18 (1 รูป) | upper 0.68 / 0.62 / 0.70, background ~0.31 |
+| U: ไม่ใช่เสื้อคลุม | 0 | 2 | | upper 0.89 / 0.96 / 0.94 |
 
-- **The coat labels are mostly right.** 11 of 12 random images are clear outer layers. `upper` and `outer` each come from a single raw class in every dataset, so our mapping did not create this confusion.
-- **Ambiguous garments are rarer and concentrate in the worst half.** On the 4 worst ones, all runs call them upper.
-- **On the random half, the runs are close:** outer recall over all 12 random images is 0.66 / 0.59 / 0.60. On the 11 random "O" images, X4 is somewhat lower than X2 (0.58 against 0.71); with 11 images this is a hint, not a finding. X4's 0.00 on the worst "O" images comes from how they were picked.
+- **label เสื้อคลุมส่วนใหญ่ถูกต้อง** 11 จาก 12 รูปสุ่มเป็นเสื้อคลุมชัดเจน `upper` และ `outer` แต่ละตัวมาจาก raw class เดียวในทุก dataset การ map ของเราจึงไม่ได้ทำให้สับสน
+- **เสื้อผ้ากำกวมพบน้อยกว่า และไปกองอยู่ในชุดแย่สุด** 4 รูปในชุดแย่สุด ทุก run ทายเป็น upper
+- **ในชุดสุ่ม ทุก run ใกล้กัน:** recall ของ outer ใน 12 รูปสุ่มคือ 0.66 / 0.59 / 0.60 ใน 11 รูปสุ่ม "O" X4 ต่ำกว่า X2 อยู่บ้าง (0.58 เทียบ 0.71) แต่ 11 รูปเป็นแค่ข้อสังเกต ยังสรุปไม่ได้ ค่า 0.00 ของ X4 ในรูป "O" ของชุดแย่สุดมาจากวิธีเลือกรูป
 
-### Q5: the X3 DFMM drops are larger than run-to-run noise.
+### Q5: ที่ X3 ต่ำลงบน DFMM มากกว่าความต่างระหว่าง run
 
-- **How noise was measured:** X1 and X2 have the same config. Except for `accessory`, their DFMM IoU differs by at most 0.0078 per class.
-- **X3's drops exceed it:** X3 − X2 is hair −0.012, skin −0.013, footwear −0.011 and headwear −0.023.
-- **Caveat:** this noise comes from one pair of U-Net runs. DeepLabV3+ may vary more between runs.
+- **วัด noise อย่างไร:** X1 และ X2 ใช้ config เดียวกัน ยกเว้น `accessory` IoU บน DFMM ของสอง run นี้ต่างกันไม่เกิน 0.0078 ต่อคลาส
+- **X3 ลดลงมากกว่านั้น:** X3 − X2 คือ hair −0.012, skin −0.013, footwear −0.011 และ headwear −0.023
+- **ข้อควรระวัง:** noise นี้มาจาก U-Net แค่คู่เดียว DeepLabV3+ อาจแกว่งระหว่าง run มากกว่านี้
 
-### Q6: no.
+### Q6: ไม่ได้
 
-- **Too few examples:** DFMM `accessory` has 72 test images and 157,182 test pixels (0.015% of labelled pixels).
-- **Unstable:** between the two U-Net runs alone, its IoU changes by −0.207.
+- **ตัวอย่างน้อยเกินไป:** `accessory` ของ DFMM มีรูป test 72 รูป และพิกเซล test 157,182 พิกเซล (0.015% ของพิกเซลที่มี label)
+- **ไม่นิ่ง:** แค่ระหว่าง U-Net สอง run IoU ก็เปลี่ยนไป −0.207
 
-## Decisions
+## การตัดสินใจ
 
-The maintainer decided these on 2026-11-07, after the review. All are recorded in the verdicts file as `d1`–`d4`. None of them changes a frozen contract or needs a retrain.
+maintainer ตัดสินใจเรื่องเหล่านี้เมื่อ 2026-11-07 หลังดูรูปเสร็จ ทั้งหมดบันทึกในไฟล์คำตัดสินเป็น `d1`–`d4` ไม่มีข้อไหนเปลี่ยน contract ที่ frozen หรือต้องเทรนใหม่
 
-**Why no frozen-change.** A frozen-change was possible: for example, map LIP `jumpsuits` and CIHP `socks` to IGNORE (pixels that are neither trained nor scored) and retrain X2–X4. It was rejected because remapping cannot fully fix either problem:
+**ทำไมไม่ทำ frozen-change** ทำ frozen-change ได้ เช่น map LIP `jumpsuits` และ CIHP `socks` เป็น IGNORE (พิกเซลที่ไม่ใช้ทั้งตอนเทรนและตอนคิดคะแนน) แล้วเทรน X2–X4 ใหม่ แต่ไม่ทำ เพราะการ map ใหม่แก้ปัญหาทั้งสองได้ไม่หมด:
 
-- **Jumpsuits:** CIHP has no jumpsuit class. Its jumpsuits are already labelled upper + pants, so no mapping can find them. A remap would remove only LIP's half of the conflict.
-- **Socks:** CIHP uses one raw class for short socks, long socks and tights. Ignoring it would also drop the real socks, which the models find well (Q2, "S").
-- **Cost:** it would change the frozen label set and the test sets, and make X2–X4 stale, for two classes.
+- **jumpsuit:** CIHP ไม่มีคลาส jumpsuit jumpsuit ของ CIHP ถูก label เป็น upper + pants ไปแล้ว ไม่มีการ map แบบไหนหามันเจอ การ map ใหม่จะตัดความขัดแย้งออกได้แค่ฝั่ง LIP
+- **socks:** CIHP ใช้ raw class เดียวสำหรับถุงเท้าสั้น ถุงเท้ายาว และถุงน่อง ถ้า ignore ก็จะทิ้งถุงเท้าจริงไปด้วย ซึ่งโมเดลหาเจอได้ดี (Q2, "S")
+- **ต้นทุน:** ต้องเปลี่ยนชุด label ที่ frozen และ test set และทำให้ X2–X4 ใช้ไม่ได้ เพื่อแก้แค่สองคลาส
 
-**What the extra scores (d1, d2) are, and are not:**
+**คะแนนเพิ่ม (d1, d2) คืออะไร และไม่ใช่อะไร:**
 
-- **Outside the frozen protocol.** They are computed outside `evaluate.py`, which stays unchanged. The official `metrics.json` scores remain the headline numbers. The extra scores are reported next to them, for all three runs, and labelled as extra.
-- **No GPU needed.** A shared class's row of the saved confusion matrix is the sum of the "where" counts of its raw classes in `raw_confusion.json`. Subtract the jumpsuits (or socks) "where" counts from the `dress` (or `footwear`) row: this gives the confusion matrix as if those pixels were IGNORE, and every class's IoU follows from it. For X4, the saved matrix and the recomputed counts differ by GPU numeric noise (Limits), so take both from the recomputed counts.
-- **Test side only.** The models were still trained on the conflicting labels. So an extra score shows how much those test pixels lower the official score. It does not show what a model trained on a consistent label set would reach. T10 states this with the limitation.
+- **อยู่นอก protocol ที่ frozen** คำนวณนอก `evaluate.py` ซึ่งไม่เปลี่ยน คะแนนทางการใน `metrics.json` ยังเป็นตัวเลขหลัก คะแนนเพิ่มรายงานไว้ข้าง ๆ ครบทั้งสาม run และเขียนกำกับว่าเป็นคะแนนเพิ่ม
+- **ไม่ต้องใช้ GPU** แถวของคลาสร่วมใน confusion matrix ที่บันทึกไว้ เท่ากับผลรวมของจำนวน "ไปที่ไหน" ของ raw class ของมันใน `raw_confusion.json` ให้ลบจำนวน "ไปที่ไหน" ของ jumpsuits (หรือ socks) ออกจากแถว `dress` (หรือ `footwear`) จะได้ confusion matrix เหมือนกับว่าพิกเซลเหล่านั้นเป็น IGNORE แล้วคำนวณ IoU ของทุกคลาสจากนั้น สำหรับ X4 matrix ที่บันทึกไว้กับจำนวนที่คำนวณใหม่ต่างกันด้วย noise เชิงตัวเลขของ GPU (ดูหัวข้อข้อจำกัด) ให้ใช้จำนวนที่คำนวณใหม่ทั้งสองอย่าง
+- **ตัดได้เฉพาะฝั่ง test** โมเดลยังเทรนด้วย label ที่ขัดกันอยู่ คะแนนเพิ่มจึงบอกว่าพิกเซล test เหล่านั้นดึงคะแนนทางการลงแค่ไหน ไม่ได้บอกว่าโมเดลที่เทรนด้วย label ที่สอดคล้องกันจะได้เท่าไร T10 ต้องเขียนเรื่องนี้ไว้ในข้อจำกัด
 
-| # | Finding | Decision | For |
+| # | สิ่งที่พบ | การตัดสินใจ | ส่งต่อให้ |
 |---|---|---|---|
-| d1 | LIP jumpsuits mapped to `dress` | Limitation, and also report LIP `dress` without jumpsuit pixels. Q1 images were not reviewed; decided from the numbers. | T9 (extra score), T10 (limitation) |
-| d2 | CIHP socks (merged into `footwear`) are often tights, long socks or bare-looking legs | Limitation, and also report CIHP `footwear` without socks pixels | T9 (extra score), T10 (limitation) |
-| d3 | skirt lost to dress, and to pants for shorts-like skirts | Limitation for skirt vs dress and for shorts-like skirts; error analysis treats clear skirts (M) as model error | T10 |
-| d4 | outer predicted as upper | Model error in the error analysis | T10 |
+| d1 | jumpsuit ของ LIP ถูก map เป็น `dress` | เขียนเป็นข้อจำกัด และรายงาน LIP `dress` แบบไม่นับพิกเซล jumpsuit เพิ่ม ไม่ได้ดูรูปของ Q1 ตัดสินจากตัวเลข | T9 (คะแนนเพิ่ม), T10 (ข้อจำกัด) |
+| d2 | socks ของ CIHP (รวมอยู่ใน `footwear`) มักเป็นถุงน่อง ถุงเท้ายาว หรือดูเหมือนขาเปล่า | เขียนเป็นข้อจำกัด และรายงาน CIHP `footwear` แบบไม่นับพิกเซล socks เพิ่ม | T9 (คะแนนเพิ่ม), T10 (ข้อจำกัด) |
+| d3 | skirt หายไปเป็น dress และเป็น pants สำหรับกระโปรงที่ดูเหมือนกางเกงขาสั้น | เขียนเป็นข้อจำกัดสำหรับ skirt กับ dress และกระโปรงที่ดูเหมือนกางเกงขาสั้น ส่วนกระโปรงชัดเจน (M) นับเป็นความผิดของโมเดลใน error analysis | T10 |
+| d4 | outer ถูกทายเป็น upper | นับเป็นความผิดของโมเดลใน error analysis | T10 |
 
-## Limits of this check
+## ข้อจำกัดของการตรวจนี้
 
-- **Sample size:** each review rate rests on 12 random images per question. These rates show what is common; they are not precise percentages.
-- **Pick bias:** the worst half was picked by X4's recall. X4's numbers on it describe the images, not how often X4 fails. Only the random half shows what is typical.
-- **Proxies:** the tights proxy and the shoe-size groups are measured per image, but CIHP images often show several people.
-- **One reviewer:** all verdicts come from the maintainer alone. "L" verdicts marked "skin?" and a few others were noted as uncertain.
-- **X4 recomputed elsewhere:** X4 was evaluated again on another GPU (RTX 4070 instead of RTX 3060). At most 0.00044 IoU per class differs from its saved metrics.
+- **จำนวนตัวอย่าง:** อัตราจากการดูรูปแต่ละข้อมาจากรูปสุ่มแค่ 12 รูปต่อคำถาม บอกได้ว่าอะไรพบบ่อย แต่ไม่ใช่เปอร์เซ็นต์ที่แม่นยำ
+- **ความเอนเอียงจากการเลือกรูป:** ชุดแย่สุดเลือกจาก recall ของ X4 ตัวเลขของ X4 ในชุดนั้นจึงอธิบายรูป ไม่ได้บอกว่า X4 พลาดบ่อยแค่ไหน มีแค่ชุดสุ่มที่บอกว่าอะไรเป็นเรื่องปกติ
+- **ตัวชี้วัดแทน:** ตัวชี้วัดถุงน่องและกลุ่มขนาดรองเท้าวัดต่อรูป แต่รูป CIHP มักมีหลายคน
+- **ผู้ดูคนเดียว:** คำตัดสินทั้งหมดมาจาก maintainer คนเดียว คำตัดสิน "L" ที่โน้ตว่า "skin?" และอีกไม่กี่รูปถูกบันทึกว่าไม่แน่ใจ
+- **X4 คำนวณใหม่บนเครื่องอื่น:** X4 ถูกวัดผลใหม่บน GPU อีกรุ่น (RTX 4070 แทน RTX 3060) IoU ต่อคลาสต่างจาก metrics ที่บันทึกไว้ไม่เกิน 0.00044
 
-## Follow-ups (outside M10)
+## งานต่อ (นอก M10)
 
-- **Scores without some raw-class pixels (d1, d2):** T9 computes them as described under [Decisions](#decisions): from `raw_confusion.json`, outside `evaluate.py`. It does not add an option to the frozen eval protocol.
-- **CIHP `skin` includes `torso_skin` (26.8% of its train pixels); LIP has no such class.** How LIP labels exposed torso skin is not checked.
-- **Occlusion:** the reviewer noted that a person in front can confuse the model (`cihp:3050`) and that depth might help.
+- **คะแนนที่ไม่นับพิกเซลของบาง raw class (d1, d2):** T9 คำนวณตามวิธีในหัวข้อ "การตัดสินใจ" คือจาก `raw_confusion.json` นอก `evaluate.py` ไม่เพิ่มตัวเลือกใหม่ใน eval protocol ที่ frozen
+- **CIHP `skin` รวม `torso_skin` ด้วย (26.8% ของพิกเซล train) แต่ LIP ไม่มีคลาสนี้** ยังไม่ได้ตรวจว่า LIP label ผิวช่วงลำตัวที่เปิดอย่างไร
+- **การถูกบัง:** ผู้ดูรูปโน้ตไว้ว่าคนที่ยืนข้างหน้าทำให้โมเดลสับสนได้ (`cihp:3050`) และข้อมูลความลึก (depth) อาจช่วยได้
