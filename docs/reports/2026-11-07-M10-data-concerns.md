@@ -5,7 +5,7 @@ Task M10, 2026-11-07. Handoff: `docs/handoffs/2026-11-07-M10-lemasc.md` (method,
 **In short:** some weak classes come from the data, not the models.
 
 - LIP jumpsuits and CIHP socks are label conflicts in the merged label set.
-- Skirt is mostly confused with dress, and the cause is mixed.
+- Skirt is lost to dress on the hardest images. On typical images the cause is mixed, and the best model (X4) loses it more to pants.
 - Outer → upper is mostly a model error.
 
 No retrain is needed. What T9 and T10 should do is listed under [Decisions](#decisions).
@@ -42,7 +42,7 @@ Values are X2 / X3 / X4 unless a table says otherwise. "Recall" of a raw class i
 - **Q1:** not reviewed; it is answered from the numbers.
 - **Which half answers what:** only the random half shows how common a cause is. The worst half shows what the hardest failures look like.
 
-"Where the pixels go" tables show the mean, over the images of a verdict, of the share of the raw-class pixels that each run predicts as each shared class. They are in the notebook, section 4.
+"Where the pixels go" tables show the mean, over the images of a verdict, of the share of the raw-class pixels that each run predicts as each shared class. They are in the notebook, section 4. The random and worst halves are kept apart: the worst images were picked by X4's recall, so X4's shares on them are low by construction. Some cells rest on one or two images; the counts are in the Random and Worst columns.
 
 ## Findings
 
@@ -73,14 +73,15 @@ Values are X2 / X3 / X4 unless a table says otherwise. "Recall" of a raw class i
 
 Review, 24 of 24:
 
-| Verdict | Random | Worst | Where the pixels go (X4) |
-|---|---|---|---|
-| K: long socks, tights or stockings | 6 | 10 | pants 0.50, skin 0.19, footwear 0.17 |
-| L: wrong label (looks like bare skin) | 4 | 2 | skin 0.58, footwear 0.23, pants 0.16 |
-| S: short socks, clearly visible | 2 | 0 | footwear 0.69, skin 0.28 |
-| M: clear socks, model mistake | 0 | 0 | |
+| Verdict | Random | Worst | Where the pixels go, X4, random | X4, worst |
+|---|---|---|---|---|
+| K: long socks, tights or stockings | 6 | 10 | footwear 0.44, pants 0.44 | pants 0.55, skin 0.26 |
+| L: wrong label (looks like bare skin) | 4 | 2 | skin 0.63, footwear 0.34 | pants 0.48, skin 0.48 |
+| S: short socks, clearly visible | 2 | 0 | footwear 0.69, skin 0.28 | |
+| M: clear socks, model mistake | 0 | 0 | | |
 
-- **What CIHP labels as socks:** in 10 of 12 random images, it covers something that looks like trousers (K) or bare legs (L). The models predict exactly that: pants or skin. No image was a clear model mistake.
+- **What CIHP labels as socks:** in 10 of 12 random images, it covers something that looks like trousers (K) or bare legs (L). The pixels the models miss go to exactly that: pants or skin. No image was a clear model mistake.
+- **Long socks are not always missed.** On the 6 random "K" images, X4 still predicts 0.44 of the socks pixels as footwear. The 0.00 on the worst "K" images comes from how they were picked.
 - **Where the review and the proxy agree, and where they don't:**
   - The proxy flags all 4 random "L" images as tights-like. These are skin-coloured tights or bare legs labelled socks. Neither can be told apart from the image, and both have the same effect on the scores.
   - The proxy undercounts long socks: 10 of the 16 "K" images have no skirt or dress, for example leggings under shorts.
@@ -90,32 +91,34 @@ Review, 24 of 24:
 
 Review, 24 of 24:
 
-| Verdict | Random | Worst | Where the pixels go (X4) |
-|---|---|---|---|
-| D: skirt vs dress unclear (looks one-piece) | 1 | 5 | dress 0.83, outer 0.16 |
-| Y: short skirt that looks like shorts | 6 | 0 | skirt 0.54, pants 0.24, outer 0.13 |
-| M: clear skirt, model mistake | 3 | 6 | dress 0.42, skirt 0.31, pants 0.11 |
-| L: wrong label (shorts or trousers) | 2 | 1 | pants 0.61, upper 0.18 |
+| Verdict | Random | Worst | Where the pixels go, X4, random | X4, worst |
+|---|---|---|---|---|
+| D: skirt vs dress unclear (looks one-piece) | 1 | 5 | outer 0.94 (1 image) | dress 0.99 |
+| Y: short skirt that looks like shorts | 6 | 0 | skirt 0.54, pants 0.24, outer 0.13 | |
+| M: clear skirt, model mistake | 3 | 6 | skirt 0.93 | dress 0.63, outer 0.16, pants 0.15 |
+| L: wrong label (shorts or trousers) | 2 | 1 | pants 0.42, upper 0.27, skirt 0.20 | pants 0.99 |
 
 - **The worst images are lost to dress.** On the worst half, all runs predict 0.68–0.73 of the skirt pixels as dress and only 0.13–0.16 as pants. 5 of the 6 LIP worst images look like one-piece outfits labelled as skirt.
 - **No single cause dominates the random half.** Of 12 random images: 6 shorts-like (Y), 3 model mistakes (M), 2 wrong labels (L), 1 skirt-or-dress (D).
-- **Where the pants confusion comes from:** shorts-like skirts and wrong labels. Clear skirts mostly go to dress.
-- **How the original question changes:** "skirt vs pants" is better described as "skirt vs dress, then shorts".
+- **On the random half, the runs differ.** Over all 12 random images, X2 predicts 0.33 of the skirt pixels as dress, X3 0.16 and X4 0.03. X4 loses more to pants (0.20).
+- **Clear skirts go to dress on hard images and for U-Net.** On the 3 random "M" images, X4 finds 0.93 of the skirt; X2 finds 0.16 and predicts 0.58 as dress. On the 6 worst "M" images, all runs predict 0.54–0.63 as dress.
+- **Where the pants confusion comes from:** shorts-like skirts and wrong labels.
+- **How the original question changes:** "skirt vs pants" is better described as "skirt vs dress on the hard images and for U-Net, then shorts". For X4 on typical images, the remaining loss is mostly to pants.
 - **Training data:** LIP has few skirts (535 train images, against 1,972 in CIHP). That may add to the low LIP score; the review cannot test it.
 
 ### Q4: outer → upper is mostly a model error.
 
 Review, 24 of 24:
 
-| Verdict | Random | Worst | Where the pixels go (X2 / X3 / X4) |
-|---|---|---|---|
-| O: clear outer layer, model mistake | 11 | 6 | outer 0.52 / 0.51 / 0.38, upper 0.39 / 0.37 / 0.51 |
-| A: ambiguous garment | 1 | 4 | upper 0.73 / 0.65 / 0.59, background ~0.25 |
-| U: not an outer layer | 0 | 2 | upper 0.89 / 0.96 / 0.94 |
+| Verdict | Random | Worst | Where the pixels go, random (X2 / X3 / X4) | Worst (X2 / X3 / X4) |
+|---|---|---|---|---|
+| O: clear outer layer, model mistake | 11 | 6 | outer 0.71 / 0.63 / 0.58, upper 0.20 / 0.28 / 0.34 | outer 0.15 / 0.30 / 0.00, upper 0.75 / 0.53 / 0.81 |
+| A: ambiguous garment | 1 | 4 | upper 0.92 / 0.78 / 0.18 (1 image) | upper 0.68 / 0.62 / 0.70, background ~0.31 |
+| U: not an outer layer | 0 | 2 | | upper 0.89 / 0.96 / 0.94 |
 
 - **The coat labels are mostly right.** 11 of 12 random images are clear outer layers. `upper` and `outer` each come from a single raw class in every dataset, so our mapping did not create this confusion.
-- **Ambiguous garments are rarer and concentrate in the worst half.** All runs call them upper.
-- **On the random half, all three runs are similar:** outer recall 0.66 / 0.59 / 0.60. X4 looks weaker on the "O" images only because the worst images were picked by X4 recall.
+- **Ambiguous garments are rarer and concentrate in the worst half.** On the 4 worst ones, all runs call them upper.
+- **On the random half, the runs are close:** outer recall over all 12 random images is 0.66 / 0.59 / 0.60. On the 11 random "O" images, X4 is somewhat lower than X2 (0.58 against 0.71); with 11 images this is a hint, not a finding. X4's 0.00 on the worst "O" images comes from how they were picked.
 
 ### Q5: the X3 DFMM drops are larger than run-to-run noise.
 
@@ -156,6 +159,7 @@ The decision options in `configs/review/m10.yaml` say "T9 error analysis". In `P
 ## Limits of this check
 
 - **Sample size:** each review rate rests on 12 random images per question. These rates show what is common; they are not precise percentages.
+- **Pick bias:** the worst half was picked by X4's recall. X4's numbers on it describe the images, not how often X4 fails. Only the random half shows what is typical.
 - **Proxies:** the tights proxy and the shoe-size groups are measured per image, but CIHP images often show several people.
 - **One reviewer:** all verdicts come from the maintainer alone. "L" verdicts marked "skin?" and a few others were noted as uncertain.
 - **X4 recomputed elsewhere:** X4 was evaluated again on another GPU (RTX 4070 instead of RTX 3060). At most 0.00044 IoU per class differs from its saved metrics.
