@@ -13,12 +13,16 @@ can give. Reviewer input is stored as a small CSV (`read_verdicts` /
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import yaml
 
 from cloth_segment.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 VERDICT_COLUMNS = ["question", "key", "verdict", "note"]
 
@@ -299,6 +303,102 @@ def legend_html() -> str:
         if i
     )
     return f"<div>{chips}<span>(background = photo, grey = ignored)</span></div>"
+
+
+# ------------------------------------------------------------ comparison grids (T9)
+
+
+def image_miou(pred: np.ndarray, gt: np.ndarray, exclude: tuple[str, ...] = ()) -> float | None:
+    """mIoU of one image with the `evaluate` rule: IGNORE skipped, classes with
+    ground truth in the mean, `exclude` left out. None if no class qualifies."""
+    if pred.shape != gt.shape:
+        raise ValueError(f"shapes differ: {pred.shape} {gt.shape}")
+    keep = gt != IGNORE
+    g, p = gt[keep].astype(np.int64), pred[keep].astype(np.int64)
+    gtc = np.bincount(g, minlength=NUM_CLASSES)[:NUM_CLASSES]
+    prc = np.bincount(p, minlength=NUM_CLASSES)[:NUM_CLASSES]
+    tp = np.bincount(g[g == p], minlength=NUM_CLASSES)[:NUM_CLASSES]
+    union = gtc + prc - tp
+    use = (gtc > 0) & np.array([c not in exclude for c in SHARED_CLASSES])
+    if not use.any():
+        return None
+    return float((tp[use] / union[use]).mean())
+
+
+def _font(size: int):
+    from PIL import ImageFont
+
+    return ImageFont.load_default(size=size)
+
+
+def comparison_grid(
+    rows: list[dict], columns: list[str], panel_h: int, note: str = ""
+) -> Image.Image:
+    """One picture: a header of `columns`, one row per image, a class legend.
+
+    Each row is {"label": str, "panels": [(H, W, 3) uint8 arrays], "captions":
+    [str]} with one panel and caption per column. The first panel is resized
+    smoothly (the photo), the others with nearest neighbour (label masks). Every
+    panel of a row is scaled to `panel_h` pixels high; columns are as wide as
+    their widest panel, and panels are centred in them.
+    """
+    from PIL import Image, ImageDraw
+
+    if not rows or any(len(r["panels"]) != len(columns) for r in rows):
+        raise ValueError("each row needs one panel per column")
+    pad, head, cap, label_w = 6, 30, 22, 150
+    scaled = []
+    for r in rows:
+        out = []
+        for k, a in enumerate(r["panels"]):
+            h, w = a.shape[:2]
+            size = (max(1, round(w * panel_h / h)), panel_h)
+            res = Image.BILINEAR if k == 0 else Image.NEAREST
+            out.append(Image.fromarray(np.ascontiguousarray(a)).resize(size, res))
+        scaled.append(out)
+    col_w = [max(s[k].width for s in scaled) for k in range(len(columns))]
+    legend_h = 2 * 24 + pad
+    width = label_w + sum(col_w) + pad * (len(columns) + 1)
+    height = head + len(rows) * (panel_h + cap + pad) + legend_h + (24 if note else 0) + pad
+    canvas = Image.new("RGB", (width, height), (252, 252, 251))
+    draw = ImageDraw.Draw(canvas)
+    f_head, f_cap = _font(16), _font(13)
+    x0 = [label_w + pad + sum(col_w[:k]) + pad * k for k in range(len(columns))]
+    for k, name in enumerate(columns):
+        draw.text(
+            (x0[k] + col_w[k] / 2, head / 2), name, fill=(43, 42, 39), font=f_head, anchor="mm"
+        )
+    for i, (r, panels) in enumerate(zip(rows, scaled, strict=True)):
+        y = head + i * (panel_h + cap + pad)
+        draw.multiline_text((pad, y + 4), r["label"], fill=(43, 42, 39), font=f_cap, spacing=4)
+        for k, im in enumerate(panels):
+            canvas.paste(im, (x0[k] + (col_w[k] - im.width) // 2, y))
+            if r["captions"][k]:
+                draw.text(
+                    (x0[k] + col_w[k] / 2, y + panel_h + cap / 2),
+                    r["captions"][k],
+                    fill=(43, 42, 39),
+                    font=f_cap,
+                    anchor="mm",
+                )
+    # Legend: one chip per shared class, two lines.
+    y = head + len(rows) * (panel_h + cap + pad) + pad
+    x, line = pad, 0
+    for i, name in enumerate(SHARED_CLASSES):
+        w = 22 + int(draw.textlength(name, font=f_cap)) + 16
+        if x + w > width:
+            x, line = pad, line + 1
+        yy = y + line * 24
+        draw.rectangle(
+            (x, yy + 3, x + 14, yy + 17),
+            fill=tuple(int(v) for v in PALETTE[i]),
+            outline=(136, 136, 136),
+        )
+        draw.text((x + 20, yy + 10), name, fill=(43, 42, 39), font=f_cap, anchor="lm")
+        x += w
+    if note:
+        draw.text((pad, height - 18), note, fill=(107, 106, 100), font=f_cap, anchor="lm")
+    return canvas
 
 
 # ------------------------------------------------------------ reviewer input
