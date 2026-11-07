@@ -1,6 +1,7 @@
 import torch
 
 from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
+from cloth_segment.data.sources import RAW_LABELS
 from cloth_segment.rawclass import (
     ACCESSORY,
     RawClassTally,
@@ -9,6 +10,9 @@ from cloth_segment.rawclass import (
 )
 
 FACE = SHARED_CLASSES.index("face")
+DRESS = SHARED_CLASSES.index("dress")
+UPPER = SHARED_CLASSES.index("upper")
+PANTS = SHARED_CLASSES.index("pants")
 BG = 0
 
 
@@ -116,3 +120,71 @@ def test_miou_without_uses_present_classes_only():
     r = miou_without(m)
     assert r["miou_without_accessory"] == 0.75  # mean of a and b; `absent` has no GT pixels
     assert r["accessory"] == 0.3 and r["miou_all"] == 0.6
+
+
+def test_raw_pred_matrix_counts_every_pixel():
+    from cloth_segment.rawclass import RAW_MAX, raw_pred_matrix
+
+    raw = torch.tensor([[6, 6, 10], [10, 10, 0]], dtype=torch.uint8)  # LIP dress, jumpsuits
+    pred = torch.tensor([[DRESS, UPPER, DRESS], [UPPER, PANTS, BG]])
+    m = raw_pred_matrix(pred, raw)
+    assert m.shape == (RAW_MAX, len(SHARED_CLASSES))
+    assert int(m.sum()) == 6
+    assert m[6, DRESS] == 1 and m[6, UPPER] == 1
+    assert m[10, DRESS] == 1 and m[10, UPPER] == 1 and m[10, PANTS] == 1
+    assert m[0, BG] == 1
+
+
+def test_shared_counts_skip_ignore_and_match_confusion_matrix():
+    from cloth_segment.evaluate import confusion_matrix
+    from cloth_segment.rawclass import shared_counts
+
+    target = torch.tensor([[DRESS, DRESS, IGNORE], [UPPER, BG, BG]])
+    pred = torch.tensor([[DRESS, UPPER, DRESS], [UPPER, BG, DRESS]])
+    sc = shared_counts(pred, target)
+    cm = confusion_matrix(pred, target, len(SHARED_CLASSES))
+    assert torch.equal(sc, torch.stack([cm.sum(1), cm.sum(0), cm.diagonal()]))
+    assert sc[0, DRESS] == 2 and sc[1, DRESS] == 2 and sc[2, DRESS] == 1
+
+
+def test_raw_rows_hit_uses_mapped_class_and_ignore_has_none():
+    from cloth_segment.data.labels import MAPPING
+    from cloth_segment.rawclass import raw_pred_matrix, raw_rows
+
+    belt = next(r for r, n in RAW_LABELS["dfmm"].items() if n == "belt")
+    assert MAPPING["dfmm"].get(belt, IGNORE) == IGNORE
+    dress = next(r for r, n in RAW_LABELS["dfmm"].items() if n == "dress")
+    raw = torch.tensor([[dress, dress, belt]], dtype=torch.uint8)
+    pred = torch.tensor([[DRESS, UPPER, UPPER]])
+    rows = {r["raw_name"]: r for r in raw_rows(raw_pred_matrix(pred, raw), "dfmm")}
+    assert rows["belt"] == {
+        "raw_id": belt,
+        "raw_name": "belt",
+        "shared": None,
+        "raw_px": 1,
+        "hit_px": None,
+    }
+    assert rows["dress"]["shared"] == "dress"
+    assert rows["dress"]["raw_px"] == 2 and rows["dress"]["hit_px"] == 1
+
+
+def test_raw_rows_rejects_unknown_raw_id():
+    import pytest
+
+    from cloth_segment.rawclass import raw_pred_matrix, raw_rows
+
+    raw = torch.tensor([[200]], dtype=torch.uint8)
+    with pytest.raises(ValueError, match="not a known raw class"):
+        raw_rows(raw_pred_matrix(torch.tensor([[BG]]), raw), "lip")
+
+
+def test_existing_breakdown_lists_only_present_files(tmp_path):
+    from cloth_segment.rawclass import existing_breakdown
+
+    assert existing_breakdown(tmp_path, ["run-a"], ["lip", "cihp"]) == []
+    d = tmp_path / "run-a" / "cihp"
+    d.mkdir(parents=True)
+    (d / "per_image_raw.csv").write_text("x")
+    (d / "other.txt").write_text("x")
+    assert existing_breakdown(tmp_path, ["run-a"], ["lip", "cihp"]) == [d / "per_image_raw.csv"]
+    assert existing_breakdown(tmp_path, ["run-b"], ["cihp"]) == []
