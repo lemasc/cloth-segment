@@ -132,6 +132,18 @@ Review, 24 of 24:
 
 The maintainer decided these on 2026-11-07, after the review. All are recorded in the verdicts file as `d1`–`d4`. None of them changes a frozen contract or needs a retrain.
 
+**Why no frozen-change.** A frozen-change was possible: for example, map LIP `jumpsuits` and CIHP `socks` to IGNORE (pixels that are neither trained nor scored) and retrain X2–X4. It was rejected because remapping cannot fully fix either problem:
+
+- **Jumpsuits:** CIHP has no jumpsuit class. Its jumpsuits are already labelled upper + pants, so no mapping can find them. A remap would remove only LIP's half of the conflict.
+- **Socks:** CIHP uses one raw class for short socks, long socks and tights. Ignoring it would also drop the real socks, which the models find well (Q2, "S").
+- **Cost:** it would change the frozen label set and the test sets, and make X2–X4 stale, for two classes.
+
+**What the extra scores (d1, d2) are, and are not:**
+
+- **Outside the frozen protocol.** They are computed outside `evaluate.py`, which stays unchanged. The official `metrics.json` scores remain the headline numbers. The extra scores are reported next to them, for all three runs, and labelled as extra.
+- **No GPU needed.** A shared class's row of the saved confusion matrix is the sum of the "where" counts of its raw classes in `raw_confusion.json`. Subtract the jumpsuits (or socks) "where" counts from the `dress` (or `footwear`) row: this gives the confusion matrix as if those pixels were IGNORE, and every class's IoU follows from it. For X4, the saved matrix and the recomputed counts differ by GPU numeric noise (Limits), so take both from the recomputed counts.
+- **Test side only.** The models were still trained on the conflicting labels. So an extra score shows how much those test pixels lower the official score. It does not show what a model trained on a consistent label set would reach. T10 states this with the limitation.
+
 | # | Finding | Decision | For |
 |---|---|---|---|
 | d1 | LIP jumpsuits mapped to `dress` | Limitation, and also report LIP `dress` without jumpsuit pixels. Q1 images were not reviewed; decided from the numbers. | T9 (extra score), T10 (limitation) |
@@ -150,6 +162,6 @@ The decision options in `configs/review/m10.yaml` say "T9 error analysis". In `P
 
 ## Follow-ups (outside M10)
 
-- **Scores without some raw-class pixels (d1, d2):** T9 needs an eval option that leaves out the jumpsuit or socks pixels. The breakdown here gives recall per raw class, not IoU.
+- **Scores without some raw-class pixels (d1, d2):** T9 computes them as described under [Decisions](#decisions): from `raw_confusion.json`, outside `evaluate.py`. It does not add an option to the frozen eval protocol.
 - **CIHP `skin` includes `torso_skin` (26.8% of its train pixels); LIP has no such class.** How LIP labels exposed torso skin is not checked.
 - **Occlusion:** the reviewer noted that a person in front can confuse the model (`cihp:3050`) and that depth might help.
