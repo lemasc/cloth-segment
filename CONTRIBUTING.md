@@ -215,8 +215,19 @@ readers who have not seen the code.
 
 ## 8. Notebooks
 
-- EDA: marimo (`notebooks/eda/*.py`). Analysis: Jupyter (`notebooks/analysis/`),
-  **outputs committed**; the hooks keep them and only strip volatile metadata.
+These are the recommended tools per folder, not hard rules. Pick another tool
+if it fits the task better, and say why in the PR.
+
+- EDA: marimo (`notebooks/eda/*.py`).
+- Analysis: Jupyter (`notebooks/analysis/`), **outputs committed**; the hooks
+  keep them and only strip volatile metadata.
+- Visual review: marimo (`notebooks/review/*.py`), for looking at dataset images
+  next to labels and model predictions. Dataset images must not be committed
+  (licences), and a marimo notebook stores no outputs, so they stay on the
+  shared mount. The notebook reads heavy inputs (predicted masks, counts) from
+  files that a script wrote to `data/`. What a reviewer enters (verdicts,
+  notes, decisions) goes to a small text file (CSV or JSON) in `docs/reports/`
+  and is committed with the report.
 - Keep outputs small (no giant image dumps, no widget state). A single
   notebook should stay well under 5 MB; the hook blocks bigger files.
 - Reusable logic belongs in `src/`, not in a notebook.

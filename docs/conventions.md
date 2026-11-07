@@ -35,8 +35,9 @@ the surrounding code.
 
 ## Notebooks
 
-- marimo: `uv run marimo edit notebooks/eda/<name>.py`; keep cells cheap and
-  load heavy results from files.
+- marimo: `uv run marimo edit notebooks/<eda|review>/<name>.py`; keep cells
+  cheap and load heavy results from files. A review notebook saves reviewer
+  input to a committed text file in `docs/reports/` (CONTRIBUTING section 8).
 - Jupyter: commit with outputs, restart-and-run-all before committing, and keep
   figures at a sensible resolution.
 

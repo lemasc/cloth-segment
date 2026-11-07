@@ -32,6 +32,7 @@ scripts/       CLI helpers (setup_links.sh, ...)
 notebooks/
   eda/         marimo notebooks (uv run marimo edit notebooks/eda/<nb>.py)
   analysis/    Jupyter, outputs committed
+  review/      marimo, visual review of images, labels and predictions
 tests/
 docs/          PLAN.md, handoffs/, reports/
 ```
