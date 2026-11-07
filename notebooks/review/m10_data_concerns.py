@@ -15,6 +15,7 @@ def _():
     import pandas as pd
     from PIL import Image, ImageDraw
 
+    from cloth_segment.data.composition import merge_composition
     from cloth_segment.data.labels import SHARED_CLASSES
     from cloth_segment.data.sources import RAW_LABELS
     from cloth_segment.data.splits import load_manifest
@@ -27,6 +28,8 @@ def _():
         outline,
         overlay,
         per_image_recall,
+        raw_legend,
+        raw_legend_html,
         read_verdicts,
         size_table,
         tally,
@@ -50,12 +53,15 @@ def _():
         load_manifest,
         load_review_config,
         lru_cache,
+        merge_composition,
         mo,
         np,
         outline,
         overlay,
         pd,
         per_image_recall,
+        raw_legend,
+        raw_legend_html,
         re,
         read_verdicts,
         size_table,
@@ -296,6 +302,52 @@ def _(RUNS, accessory_supply, json, load_manifest, mo, pd, runs):
 
 
 @app.cell
+def _(DATA, merge_composition, mo, pd):
+    # Same tables as the T1 EDA notebook, section 4b (M5), on the train split:
+    # what each shared class was built from when the models learned it.
+    _classes = ["dress", "skirt", "pants", "upper", "outer", "footwear", "skin"]
+    _m = pd.read_csv(
+        DATA / "splits" / "splits-v2" / "manifest.csv",
+        usecols=["dataset", "id", "split"],
+        dtype={"id": str},
+        keep_default_na=False,
+    )
+    _parts = []
+    for _d in ("lip", "cihp", "dfmm"):
+        _scan = pd.read_csv(
+            DATA / "eda" / f"scan_{_d}.csv", dtype={"id": str}, keep_default_na=False
+        )
+        _keep = set(_m[(_m.dataset == _d) & (_m.split == "train")]["id"])
+        _scan = _scan[(_scan.error == "") & _scan["id"].isin(_keep)]
+        _parts.append(merge_composition(_scan, _d))
+    _c = pd.concat(_parts)
+    _c = _c[_c["shared"].isin(_classes) & (_c["pixels"] > 0)]
+    _c["cell"] = _c.apply(lambda r: f"{r.pct_of_shared:.1f}% ({r.images:,} img)", axis=1)
+    _t = _c.pivot_table(
+        index=["shared", "raw"], columns="dataset", values="cell", aggfunc="first", fill_value="—"
+    )
+    _order = {c: i for i, c in enumerate(_classes)}
+    _t = _t.reset_index().sort_values("shared", key=lambda s: s.map(_order), kind="stable")
+    _t = _t[["shared", "raw", "lip", "cihp", "dfmm"]]
+    mo.vstack(
+        [
+            mo.md("""
+    ## Label merges (train split)
+
+    Each shared class is a merge of raw (original dataset) classes. Per raw
+    class and dataset: its share of that shared class's train pixels, and how
+    many train images contain it. "—" = the dataset has no such raw class, so
+    those pixels carry another label there (e.g. CIHP has no jumpsuits). Same
+    numbers as section 4b of `notebooks/eda/t1_eda.py` (M5), on the train split.
+    The raw-labels panel of each review image shows these raw classes.
+    """),
+            mo.ui.table(_t, selection=None, page_size=40),
+        ]
+    )
+    return
+
+
+@app.cell
 def _(
     DATA,
     DATASETS,
@@ -308,6 +360,8 @@ def _(
     out_dir,
     outline,
     overlay,
+    raw_legend,
+    raw_legend_html,
     runs,
 ):
     ZOOM_MARGIN = 0.25  # crop grows by this share of the region's size on each side
@@ -336,11 +390,13 @@ def _(
 
     @lru_cache(maxsize=512)
     def render(dataset, index, image, mask, raw_mask, raw_names, panel_h, alpha):
-        """Two rows: [context photo if zoomed] photo, ground truth / one panel per run.
+        """Two rows: [context photo if zoomed] photo, ground truth, raw labels /
+        one panel per run.
 
         Panels are resized to `panel_h` (photos with Lanczos, masks blended
         at native size first); the outline is drawn after resizing so it stays
-        2 px wide. Returns (image, info text).
+        2 px wide. Returns (image, info text, legend HTML of the raw classes
+        in the shown area).
         """
         photo = np.asarray(Image.open(DATASETS / image).convert("RGB"))
         gt = np.asarray(Image.open(DATA / mask))
@@ -356,9 +412,9 @@ def _(
         cw = max(1, round((x1 - x0) * panel_h / (y1 - y0)))
         edge = outline(np.asarray(crop_region.resize((cw, panel_h), Image.NEAREST)) > 0, width=2)
 
-        def _panel(m, title):
+        def _panel(m, title, raw_colours=False):
             arr = np.asarray(
-                _fit(overlay(photo[y0:y1, x0:x1], m[y0:y1, x0:x1], alpha), panel_h)
+                _fit(overlay(photo[y0:y1, x0:x1], m[y0:y1, x0:x1], alpha, raw_colours), panel_h)
             ).copy()
             arr[edge] = 255
             return _label(Image.fromarray(arr), title)
@@ -373,6 +429,7 @@ def _(
             top.append(_label(ctx, "full photo"))
         top += [_label(_fit(photo[y0:y1, x0:x1], panel_h), "zoom" if zoomed else "photo")]
         top.append(_panel(gt, "ground truth"))
+        top.append(_panel(raw, f"raw labels ({dataset})", raw_colours=True))
         bottom = []
         for alias in runs:
             pred = np.asarray(Image.open(out_dir / "pred" / alias / dataset / f"{index}.png"))
@@ -387,7 +444,8 @@ def _(
             + (f", zoom {x1 - x0}×{y1 - y0}" if zoomed else "")
             + f", shown ×{scale:.2f}"
         )
-        return canvas, info
+        legend = raw_legend_html(raw_legend(raw[y0:y1, x0:x1], dataset))
+        return canvas, info, legend
 
     return (render,)
 
@@ -455,7 +513,7 @@ def _(cfg, mask_alpha, mo, panel_size, re, read_verdicts, render, samples, verdi
     )
 
     def _image(q, r):
-        img, info = render(
+        img, info, legend = render(
             r.dataset,
             r.index,
             r.image,
@@ -478,7 +536,13 @@ def _(cfg, mask_alpha, mo, panel_size, re, read_verdicts, render, samples, verdi
         ).text
         src = re.search(r"src='([^']+)'", html).group(1)
         link = mo.Html(f'<a href="{src}" target="_blank" rel="noopener">{html}</a>')
-        return mo.vstack([mo.md(f"{info} · click the image to open it full size"), link])
+        return mo.vstack(
+            [
+                mo.md(f"{info} · click the image to open it full size"),
+                link,
+                mo.Html(f"<small>Raw labels in view: {legend}</small>"),
+            ]
+        )
 
     def _sample_view(q, r):
         recall = " / ".join(

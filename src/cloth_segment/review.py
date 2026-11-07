@@ -43,6 +43,19 @@ PALETTE = np.array(
 IGNORE_COLOUR = np.array([128, 128, 128], dtype=np.uint8)
 assert len(PALETTE) == NUM_CLASSES
 
+# One colour per raw id (raw masks have at most 24 classes; id 0 is background
+# in every dataset). Not related to PALETTE: the per-image legend names them.
+RAW_PALETTE = np.array(
+    [
+        [0, 0, 0], [230, 25, 75], [60, 180, 75], [255, 225, 25], [0, 130, 200],
+        [245, 130, 48], [145, 30, 180], [70, 240, 240], [240, 50, 230], [210, 245, 60],
+        [250, 190, 212], [0, 128, 128], [220, 190, 255], [170, 110, 40], [255, 250, 200],
+        [128, 0, 0], [170, 255, 195], [128, 128, 0], [255, 215, 180], [0, 0, 128],
+        [128, 128, 128], [255, 255, 255], [100, 100, 255], [255, 100, 100],
+    ],
+    dtype=np.uint8,
+)  # fmt: skip
+
 
 def load_review_config(path: Path) -> dict:
     cfg = yaml.safe_load(Path(path).read_text())
@@ -129,9 +142,14 @@ def colour_mask(mask: np.ndarray) -> np.ndarray:
     return out
 
 
-def overlay(image: np.ndarray, mask: np.ndarray, alpha: float = 0.55) -> np.ndarray:
-    """Blend coloured `mask` over `image` (H, W, 3); background stays the photo."""
-    col = colour_mask(mask).astype(np.float32)
+def overlay(
+    image: np.ndarray, mask: np.ndarray, alpha: float = 0.55, raw: bool = False
+) -> np.ndarray:
+    """Blend coloured `mask` over `image` (H, W, 3); background (0) stays the photo.
+
+    `raw=True` colours raw ids with RAW_PALETTE instead of shared ids.
+    """
+    col = (RAW_PALETTE[mask] if raw else colour_mask(mask)).astype(np.float32)
     img = image.astype(np.float32)
     a = np.where((mask != 0)[..., None], alpha, 0.0)
     return (img * (1 - a) + col * a).round().astype(np.uint8)
@@ -169,6 +187,45 @@ def crop_box(region: np.ndarray, margin: float = 0.6, min_side: int = 96) -> tup
         int(max(0, np.floor(cx - hw))),
         int(min(w, np.ceil(cx + hw))),
     )
+
+
+def raw_legend(raw: np.ndarray, dataset: str) -> list[dict]:
+    """Raw classes present in one raw mask, largest first: id, name, the shared
+    class it maps to (None = ignored) and its share of the image."""
+    from cloth_segment.data.labels import MAPPING
+    from cloth_segment.data.sources import RAW_LABELS
+
+    ids, counts = np.unique(raw, return_counts=True)
+    out = []
+    for rid, n in sorted(zip(ids.tolist(), counts.tolist(), strict=True), key=lambda t: -t[1]):
+        if rid not in RAW_LABELS[dataset]:
+            raise ValueError(f"{dataset}: raw id {rid} is not a known raw class")
+        sid = MAPPING[dataset].get(rid, IGNORE)
+        out.append(
+            {
+                "raw_id": rid,
+                "raw": RAW_LABELS[dataset][rid],
+                "shared": SHARED_CLASSES[sid] if sid != IGNORE else None,
+                "share": n / raw.size,
+            }
+        )
+    return out
+
+
+def raw_legend_html(items: list[dict]) -> str:
+    """Colour chips for `raw_legend` items: raw name → shared class (share)."""
+
+    def chip(it):
+        rgb = tuple(int(v) for v in RAW_PALETTE[it["raw_id"]])
+        target = it["shared"] or "ignored"
+        return (
+            f'<span style="display:inline-block;margin:0 12px 4px 0">'
+            f'<span style="display:inline-block;width:12px;height:12px;background:rgb{rgb};'
+            f'border:1px solid #888;vertical-align:middle;margin-right:4px"></span>'
+            f"{it['raw']} → <b>{target}</b> ({it['share']:.1%})</span>"
+        )
+
+    return "<div>" + "".join(chip(it) for it in items if it["raw_id"] != 0) + "</div>"
 
 
 def legend_html() -> str:

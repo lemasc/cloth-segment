@@ -7,6 +7,7 @@ from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
 from cloth_segment.review import (
     IGNORE_COLOUR,
     PALETTE,
+    RAW_PALETTE,
     colour_mask,
     crop_box,
     load_review_config,
@@ -14,6 +15,8 @@ from cloth_segment.review import (
     overlay,
     per_image_recall,
     pick_samples,
+    raw_legend,
+    raw_legend_html,
     read_verdicts,
     size_table,
     split_count,
@@ -183,3 +186,31 @@ def test_review_config_missing_key(tmp_path):
     p.write_text("out_dir: x\nruns: {A: r}\nrank_run: A\nseed: 0\nquestions: {q: {title: t}}\n")
     with pytest.raises(ValueError, match="misses"):
         load_review_config(p)
+
+
+def test_raw_palette_covers_every_raw_class():
+    from cloth_segment.data.sources import RAW_LABELS
+
+    assert max(max(v) for v in RAW_LABELS.values()) < len(RAW_PALETTE)
+    assert len({tuple(c) for c in RAW_PALETTE}) == len(RAW_PALETTE)
+
+
+def test_overlay_raw_uses_raw_palette():
+    img = np.zeros((1, 2, 3), dtype=np.uint8)
+    out = overlay(img, np.array([[0, 10]], dtype=np.uint8), alpha=1.0, raw=True)
+    assert (out[0, 0] == 0).all() and (out[0, 1] == RAW_PALETTE[10]).all()
+
+
+def test_raw_legend_names_target_and_share():
+    # LIP: 10 jumpsuits -> dress, 0 background
+    raw = np.array([[10, 10, 10, 0]], dtype=np.uint8)
+    items = raw_legend(raw, "lip")
+    assert items[0] == {"raw_id": 10, "raw": "jumpsuits", "shared": "dress", "share": 0.75}
+    html = raw_legend_html(items)
+    assert "jumpsuits → <b>dress</b> (75.0%)" in html and "background →" not in html
+
+
+def test_raw_legend_ignored_class():
+    # DFMM: 10 belt -> ignored
+    items = raw_legend(np.array([[10]], dtype=np.uint8), "dfmm")
+    assert items[0]["shared"] is None and "ignored" in raw_legend_html(items)
