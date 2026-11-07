@@ -1,0 +1,99 @@
+# M10 visual review: which images to show and what a reviewer can answer.
+# Read by scripts/review_predictions.py and notebooks/review/m10_data_concerns.py.
+# Not a training config: it has no run hash and changes no run.
+
+out_dir: review/M10 # under data/ (shared mount); predicted masks and sample list
+breakdown_dir: review/M10/breakdown # under data/; output of scripts/raw_class_breakdown.py
+verdicts: docs/reports/2026-11-07-M10-verdicts.csv # reviewer input, committed
+
+runs: # alias -> run folder, the three comparison runs
+  X2: 20261105-1307-1acb88f-unet-r34
+  X3: 20261105-2050-f4e2ffe-deeplabv3p-r50
+  X4: 20261105-2220-ac9a26b-segformer-b2
+
+# "Worst" images are ranked by this run's recall. X4 is the strongest model, so
+# its failures are the most likely to come from the data, not the model.
+rank_run: X4
+seed: 0
+
+# Per question: test sets, raw classes to sample, the smallest area (share of
+# the image) an image needs to be a candidate, and how many images to pick.
+# n_worst / n_random are split evenly over the test sets.
+questions:
+  q1_jumpsuits:
+    title: "Q1 check: what LIP jumpsuits look like"
+    datasets: [lip]
+    raw: [jumpsuits]
+    min_share: 0.002
+    n_worst: 12
+    n_random: 12
+    verdicts:
+      T: looks like a top + trousers (uniform, wetsuit, costume)
+      O: looks like one piece (dress-like)
+      L: wrong label (not a jumpsuit)
+      A: cannot tell
+  q2_socks:
+    title: "Q2: why CIHP socks are missed"
+    datasets: [cihp]
+    raw: [socks]
+    min_share: 0.004
+    n_worst: 12
+    n_random: 12
+    verdicts:
+      K: long socks, tights or stockings (look like skin or trousers)
+      S: short socks, clearly visible
+      L: wrong label (not socks)
+      M: clear socks, model mistake
+      A: cannot tell
+  q3_skirt:
+    title: "Q3: why skirt is predicted as pants"
+    datasets: [lip, cihp]
+    raw: [skirt]
+    min_share: 0.002
+    n_worst: 12
+    n_random: 12
+    verdicts:
+      Y: short skirt that looks like shorts
+      L: wrong label (shorts or trousers labelled skirt)
+      D: skirt vs dress unclear (one-piece outfit)
+      M: clear skirt, model mistake
+      A: cannot tell
+  q4_outer:
+    title: "Q4: why outer (coat) is predicted as upper"
+    datasets: [lip, cihp]
+    raw: [coat]
+    min_share: 0.002
+    n_worst: 12
+    n_random: 12
+    verdicts:
+      O: clear outer layer, model mistake
+      U: not an outer layer (wrong label)
+      A: ambiguous garment (open shirt, cardigan, vest, hoodie ...)
+      X: cannot tell
+
+# Decisions for the maintainer. Options are tick boxes; more than one may apply.
+decisions:
+  d1_jumpsuits:
+    title: "LIP jumpsuits mapped to dress (Q1)"
+    options:
+      limitation: write it as a limitation in T10 only
+      report_without: also report LIP dress without jumpsuit pixels in T9 (no retrain)
+      frozen_change: frozen-change to the label mapping and retrain X2-X4
+  d2_socks:
+    title: "CIHP socks in footwear (Q2)"
+    options:
+      limitation: write it as a limitation in T10 only
+      report_without: also report CIHP footwear without socks in T9 (no retrain)
+      frozen_change: frozen-change to the label mapping and retrain X2-X4
+  d3_skirt:
+    title: "skirt vs pants (Q3)"
+    options:
+      limitation: write it as a limitation in T10 only
+      model_error: treat it as model error in T9 error analysis
+      frozen_change: frozen-change to the label mapping and retrain X2-X4
+  d4_outer:
+    title: "upper vs outer (Q4)"
+    options:
+      limitation: write it as a limitation in T10 only
+      model_error: treat it as model error in T9 error analysis
+      frozen_change: frozen-change to the label mapping and retrain X2-X4
