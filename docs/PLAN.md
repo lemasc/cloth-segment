@@ -57,7 +57,7 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T6 | Model A: U-Net (ResNet-34) | done |
 | T7 | Model B: DeepLabV3+ (ResNet-50): code, config, tests (training is X3) | done |
 | T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | done |
-| T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | doing |
+| T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | done |
 | T10 | Error analysis and limitations | todo |
 | T11 | Slides and README (usage, data sources, configuration) | todo |
 
