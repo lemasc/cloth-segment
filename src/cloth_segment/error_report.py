@@ -166,6 +166,13 @@ def build(
             }
     if review is not None:
         res["review"] = review_summary(review["samples"], review["verdicts"], review["codes"])
+        if review.get("second") is not None:
+            res["review_second"] = review_summary(
+                review["samples"], review["second"], review["codes"]
+            )
+            res["review_agreement"] = agreement(
+                review["samples"], review["verdicts"], review["second"]
+            )
     return res
 
 
@@ -180,6 +187,22 @@ def review_summary(samples: pd.DataFrame, verdicts: pd.DataFrame, codes: Mapping
             p: int(((m["verdict"] == code) & (m["pick"] == p)).sum()) for p in ("worst", "random")
         }
     return out
+
+
+def agreement(samples: pd.DataFrame, a: pd.DataFrame, b: pd.DataFrame) -> dict:
+    """Images where two readings give the same verdict, overall and per pick group."""
+    va = a.set_index("key")["verdict"]
+    vb = b.set_index("key")["verdict"]
+    s = samples[["key", "pick"]].copy()
+    s["a"], s["b"] = s["key"].map(va).fillna(""), s["key"].map(vb).fillna("")
+    both = (s["a"] != "") & (s["b"] != "")
+    same = both & (s["a"] == s["b"])
+    return {
+        "judged_by_both": int(both.sum()),
+        "same": int(same.sum()),
+        "per_pick": {p: int((same & (s["pick"] == p)).sum()) for p in ("worst", "random")},
+        "differ": s.loc[both & ~same, ["key", "pick", "a", "b"]].to_dict("records"),
+    }
 
 
 def _f(v, nd=4):
@@ -265,9 +288,26 @@ def tables_markdown(res: Mapping) -> str:
     if "review" in res:
         r = res["review"]
         md += [f"\n## CIHP dress review: {r['reviewed']} of {r['images']} images judged\n"]
-        md += ["| verdict | worst | random |", "|---|---|---|"]
+        r2 = res.get("review_second")
+        md += [
+            "| verdict | worst | random |" + (" second reading: worst | random |" if r2 else ""),
+            "|---|---|---|" + ("---|---|" if r2 else ""),
+        ]
         for code, c in r["counts"].items():
-            md.append(f"| {code} | {c['worst']} | {c['random']} |")
+            extra = (
+                f" {r2['counts'][code]['worst']} | {r2['counts'][code]['random']} |" if r2 else ""
+            )
+            md.append(f"| {code} | {c['worst']} | {c['random']} |" + extra)
+        if "review_agreement" in res:
+            ag = res["review_agreement"]
+            md += [
+                f"\nSame verdict in both readings: {ag['same']} of {ag['judged_by_both']} "
+                f"(worst {ag['per_pick']['worst']}, random {ag['per_pick']['random']}).",
+                "",
+                "| image | pick | verdict | second reading |",
+                "|---|---|---|---|",
+            ]
+            md += [f"| {d['key']} | {d['pick']} | {d['a']} | {d['b']} |" for d in ag["differ"]]
 
     checks = [
         f"| {a} | {d} | {zr['per_run'][a][d]['images']} | "

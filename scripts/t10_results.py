@@ -52,6 +52,11 @@ def main(argv: list[str] | None = None) -> int:
         "samples": samples,
         "verdicts": read_verdicts(paths.REPO_ROOT / rcfg["verdicts"]),
         "codes": q["verdicts"],
+        "second": (
+            read_verdicts(paths.REPO_ROOT / cfg["review_second"])
+            if cfg.get("review_second")
+            else None
+        ),
     }
 
     res = error_report.build(cfg, zones, counts, sizes, review)

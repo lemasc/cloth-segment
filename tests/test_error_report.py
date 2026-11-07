@@ -142,3 +142,13 @@ def test_build_tables_and_figures(tmp_path):
     cfg["buckets"]["short_side"]["value"] = "colour"
     with pytest.raises(ValueError, match="unknown bucket value"):
         error_report.build(cfg, {"A": {"lip": z}, "B": {"lip": z}}, counts, sizes, None)
+
+
+def test_agreement_counts_same_verdicts_per_pick():
+    samples = pd.DataFrame({"key": ["c:1", "c:2", "c:3"], "pick": ["worst", "random", "random"]})
+    a = pd.DataFrame({"key": ["c:1", "c:2", "c:3"], "verdict": ["M", "W", "G"]})
+    b = pd.DataFrame({"key": ["c:1", "c:2"], "verdict": ["A", "W"]})
+    ag = error_report.agreement(samples, a, b)
+    assert ag["judged_by_both"] == 2 and ag["same"] == 1
+    assert ag["per_pick"] == {"worst": 0, "random": 1}
+    assert ag["differ"] == [{"key": "c:1", "pick": "worst", "a": "M", "b": "A"}]
