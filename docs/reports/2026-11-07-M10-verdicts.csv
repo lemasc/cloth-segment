@@ -1,4 +1,13 @@
 question,key,verdict,note
+d1_jumpsuits,limitation,x,
+d1_jumpsuits,note,,Q1 images not reviewed; decided from the raw-class numbers
+d1_jumpsuits,report_without,x,
+d2_socks,limitation,x,
+d2_socks,report_without,x,
+d3_skirt,limitation,x,
+d3_skirt,model_error,x,
+d3_skirt,note,,limitation: skirt vs dress and shorts-like skirts; model error: clear skirts (M)
+d4_outer,model_error,x,
 q2_socks,cihp:122,K,
 q2_socks,cihp:1487,K,
 q2_socks,cihp:1657,K,
