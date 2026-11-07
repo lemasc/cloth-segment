@@ -1,0 +1,17 @@
+# T10 error analysis: runs, error-zone settings and where results go.
+# Read by scripts/error_zones.py (GPU) and scripts/t10_results.py (no GPU).
+# Not a training config: it has no run hash and changes no run.
+
+runs: # alias -> run folder and model name (same as configs/report/t9.yaml)
+  X2: {name: 20261105-1307-1acb88f-unet-r34, model: U-Net R34}
+  X3: {name: 20261105-2050-f4e2ffe-deeplabv3p-r50, model: DeepLabV3+ R50}
+  X4: {name: 20261105-2220-ac9a26b-segformer-b2, model: SegFormer-B2}
+
+datasets: [lip, cihp, dfmm] # test sets (D4)
+
+zones:
+  # Edge band width as a share of the image diagonal. 0.01 is the headline;
+  # 0.005 and 0.02 check that the conclusion does not hang on the choice.
+  fracs: [0.005, 0.01, 0.02]
+  headline: 0.01
+  out_dir: analysis/T10/zones # under data/ (shared mount); one JSON per run and test set
