@@ -19,6 +19,7 @@ from cloth_segment.review import (
     raw_legend_html,
     read_verdicts,
     size_table,
+    socks_context,
     split_count,
     tally,
     write_verdicts,
@@ -214,3 +215,28 @@ def test_raw_legend_ignored_class():
     # DFMM: 10 belt -> ignored
     items = raw_legend(np.array([[10]], dtype=np.uint8), "dfmm")
     assert items[0]["shared"] is None and "ignored" in raw_legend_html(items)
+
+
+def test_socks_context_tights_like():
+    raw = pd.DataFrame(
+        {
+            "index": [0, 0, 0, 1, 1, 1, 2, 2],
+            "raw_name": [
+                "socks",
+                "skirt",
+                "left_leg",
+                "socks",
+                "skirt",
+                "left_leg",
+                "socks",
+                "pants",
+            ],
+            "raw_px": [100, 50, 5, 100, 50, 40, 100, 80],
+            "hit_px": [10, 40, 5, 60, 40, 30, 90, 70],
+        }
+    )
+    c = socks_context(raw).set_index("index")
+    assert c.loc[0, "tights_like"]  # skirt, leg skin 5 < 10% of 100
+    assert not c.loc[1, "tights_like"]  # skirt, but 40 px of leg skin shows
+    assert not c.loc[2, "tights_like"]  # no skirt or dress
+    assert c.loc[0, "hit_px"] == 10 and c.loc[1, "leg_px"] == 40

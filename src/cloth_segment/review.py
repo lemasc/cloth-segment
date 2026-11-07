@@ -113,6 +113,37 @@ def pick_samples(
     return pd.concat([worst.assign(pick="worst"), rnd.assign(pick="random")], ignore_index=True)
 
 
+def socks_context(raw: pd.DataFrame, leg_share: float = 0.1) -> pd.DataFrame:
+    """One row per image with raw `socks`: socks pixels and hits, visible leg
+    skin, and whether a skirt or dress is in the image.
+
+    `raw` is one run's `per_image_raw.csv` (LIP or CIHP raw names).
+    `tights_like`: a skirt or dress is present and visible leg skin
+    (`left_leg` + `right_leg`) is below `leg_share` × the socks pixels, i.e.
+    legs that would show under a skirt are covered by what is labelled socks.
+    A per-image proxy: in images with several people the skirt, legs and
+    socks may belong to different people.
+    """
+    p = raw.pivot_table(
+        index="index", columns="raw_name", values="raw_px", aggfunc="sum", fill_value=0
+    )
+    for col in ("socks", "left_leg", "right_leg", "skirt", "dress"):
+        if col not in p:
+            p[col] = 0
+    p = p[p["socks"] > 0]
+    hit = raw[raw["raw_name"] == "socks"].set_index("index")["hit_px"]
+    out = pd.DataFrame(
+        {
+            "socks_px": p["socks"],
+            "hit_px": hit.reindex(p.index),
+            "leg_px": p["left_leg"] + p["right_leg"],
+            "skirt_or_dress": (p["skirt"] + p["dress"]) > 0,
+        }
+    )
+    out["tights_like"] = out["skirt_or_dress"] & (out["leg_px"] < leg_share * out["socks_px"])
+    return out.reset_index()
+
+
 def split_count(n: int, parts: int) -> list[int]:
     """`n` spread over `parts` as evenly as possible, earlier parts first."""
     return [n // parts + (i < n % parts) for i in range(parts)]

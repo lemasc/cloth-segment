@@ -32,6 +32,7 @@ def _():
         raw_legend_html,
         read_verdicts,
         size_table,
+        socks_context,
         tally,
         write_verdicts,
     )
@@ -65,6 +66,7 @@ def _():
         re,
         read_verdicts,
         size_table,
+        socks_context,
         tally,
         write_verdicts,
     )
@@ -257,6 +259,47 @@ def _(breakdown_dir, mo, pd, per_image_recall, runs, size_table):
             mo.ui.table(_shoes, selection=None),
             mo.md("**Socks**"),
             mo.ui.table(_socks, selection=None),
+        ]
+    )
+    return
+
+
+@app.cell
+def _(breakdown_dir, mo, pd, runs, socks_context):
+    _rows = []
+    for _ds in ("lip", "cihp"):
+        for _alias, _run in runs.items():
+            _c = socks_context(
+                pd.read_csv(breakdown_dir / _run / _ds / "per_image_raw.csv", dtype={"id": str})
+            )
+            _t = _c["tights_like"]
+
+            def _rec(m, c=_c):
+                return round(c["hit_px"][m].sum() / c["socks_px"][m].sum(), 2)
+
+            _rows.append(
+                {
+                    "test set": _ds,
+                    "run": _alias,
+                    "socks images": len(_c),
+                    "tights-like images": int(_t.sum()),
+                    "tights-like share of socks pixels": round(
+                        _c["socks_px"][_t].sum() / _c["socks_px"].sum(), 2
+                    ),
+                    "recall tights-like": _rec(_t),
+                    "recall rest": _rec(~_t),
+                }
+            )
+    mo.vstack(
+        [
+            mo.md("""
+    **Socks: are they tights?** "Tights-like" = a skirt or dress is in the
+    image and visible leg skin is under 10% of the socks pixels, so the legs
+    that a skirt would show are covered by what is labelled socks. A per-image
+    proxy (`socks_context`): in CIHP images with several people, the skirt and
+    the socks may belong to different people. The review tab checks it by eye.
+    """),
+            mo.ui.table(pd.DataFrame(_rows), selection=None),
         ]
     )
     return
