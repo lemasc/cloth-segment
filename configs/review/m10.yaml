@@ -89,11 +89,11 @@ decisions:
     title: "skirt vs pants (Q3)"
     options:
       limitation: write it as a limitation in T10 only
-      model_error: treat it as model error in T9 error analysis
+      model_error: treat it as model error in T10 error analysis
       frozen_change: frozen-change to the label mapping and retrain X2-X4
   d4_outer:
     title: "upper vs outer (Q4)"
     options:
       limitation: write it as a limitation in T10 only
-      model_error: treat it as model error in T9 error analysis
+      model_error: treat it as model error in T10 error analysis
       frozen_change: frozen-change to the label mapping and retrain X2-X4

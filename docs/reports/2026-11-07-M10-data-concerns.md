@@ -154,8 +154,6 @@ The maintainer decided these on 2026-11-07, after the review. All are recorded i
 | d3 | skirt lost to dress, and to pants for shorts-like skirts | Limitation for skirt vs dress and for shorts-like skirts; error analysis treats clear skirts (M) as model error | T10 |
 | d4 | outer predicted as upper | Model error in the error analysis | T10 |
 
-The decision options in `configs/review/m10.yaml` say "T9 error analysis". In `PLAN.md`, error analysis is T10, so this table names T10.
-
 ## Limits of this check
 
 - **Sample size:** each review rate rests on 12 random images per question. These rates show what is common; they are not precise percentages.
