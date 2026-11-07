@@ -7,6 +7,7 @@ app = marimo.App(width="full")
 @app.cell
 def _():
     import json
+    import re
     from functools import lru_cache
 
     import marimo as mo
@@ -55,6 +56,7 @@ def _():
         overlay,
         pd,
         per_image_recall,
+        re,
         read_verdicts,
         size_table,
         tally,
@@ -419,7 +421,7 @@ def _(cfg, mo, saved_map):
 
 
 @app.cell
-def _(cfg, mask_alpha, mo, panel_size, read_verdicts, render, samples, verdict_path):
+def _(cfg, mask_alpha, mo, panel_size, re, read_verdicts, render, samples, verdict_path):
     # The verdict widgets are created here, in the cell that shows them: marimo
     # does not rerun the cell that defines a widget when its value changes, so
     # picking a verdict does not redraw the images. When a slider reruns this
@@ -463,7 +465,20 @@ def _(cfg, mask_alpha, mo, panel_size, read_verdicts, render, samples, verdict_p
             panel_size.value,
             mask_alpha.value,
         )
-        return mo.vstack([mo.md(info), mo.image(img)])
+        # Fit the window; a click opens the full-size image in a new tab
+        # (marimo has no built-in zoom). In the editor the src is a ./@file/ URL.
+        html = mo.image(
+            img,
+            style={
+                "max-height": "90vh",
+                "max-width": "100%",
+                "height": "auto",
+                "cursor": "zoom-in",
+            },
+        ).text
+        src = re.search(r"src='([^']+)'", html).group(1)
+        link = mo.Html(f'<a href="{src}" target="_blank" rel="noopener">{html}</a>')
+        return mo.vstack([mo.md(f"{info} · click the image to open it full size"), link])
 
     def _sample_view(q, r):
         recall = " / ".join(
