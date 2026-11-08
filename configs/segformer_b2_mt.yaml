@@ -1,10 +1,16 @@
 # E1 multi-task: SegFormer-B2 (T8) + DFMM attribute heads on the shared encoder.
-# Overrides only model.*; shared fields (D5) stay in base.yaml, so the
-# segmentation setup is the same as segformer_b2.yaml (X4). The checkpoint rule
-# (eval.select) stays segmentation-only.
+# Overrides model.* and the seed only; the other shared fields (D5) stay in
+# base.yaml. Seed 1, not 0: the reference is segformer_b2_s1.yaml (X6) on the same
+# GPU, because a seed-0 plain run has X4's hash and the D7 cache would skip it.
+# Apart from model.attr, X5 and X6 resolve to the same config. The checkpoint
+# rule (eval.select) stays segmentation-only.
 # Choice of heads and values: E1 proposal (12 shape attributes; DFMM attribute
 # counts per split in the E1 handoff). Texture attributes (fabric_*, pattern_*)
 # are not heads: very skewed, many values with < 20 test items, outer 80% NA.
+seed: 1
+run:
+  overrides_shared: [seed]
+
 model:
   name: segformer_b2_mt
   pretrained: true

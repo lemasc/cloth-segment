@@ -135,16 +135,22 @@ def test_mt_needs_attr_section():
         build_model({"name": "segformer_b2_mt", "pretrained": False})
 
 
-def test_mt_config_resolves_without_touching_shared_fields():
-    cfg = runs.load_config(paths.CONFIGS / "segformer_b2_mt.yaml")
+def test_x5_and_x6_configs_differ_only_in_the_model():
+    """E1 (X5) and its reference (X6): seed 1 both, same everything but the model."""
     base = yaml.safe_load((paths.CONFIGS / "base.yaml").read_text())
-    assert runs.shared_overrides(base, cfg) == []
-    spec = attributes.parse_spec(cfg["model"]["attr"])
-    assert len(spec.heads) == 12
-    plain = runs.load_config(paths.CONFIGS / "segformer_b2.yaml")
-    assert {k: v for k, v in cfg.items() if k != "model"} == {
+    mt = runs.load_config(paths.CONFIGS / "segformer_b2_mt.yaml")
+    plain = runs.load_config(paths.CONFIGS / "segformer_b2_s1.yaml")
+    assert runs.shared_overrides(base, mt) == runs.shared_overrides(base, plain) == ["seed"]
+    assert mt["seed"] == plain["seed"] == 1
+    assert {k: v for k, v in mt.items() if k != "model"} == {
         k: v for k, v in plain.items() if k != "model"
     }
+    assert {k: v for k, v in mt["model"].items() if k != "attr"} == plain["model"] | {
+        "name": "segformer_b2_mt"
+    }
+    assert len(attributes.parse_spec(mt["model"]["attr"]).heads) == 12
+    x4 = runs.load_config(paths.CONFIGS / "segformer_b2.yaml")
+    assert runs.config_hash(plain) != runs.config_hash(x4)  # the D7 cache does not skip X6
 
 
 def test_existing_run_hashes_unchanged():
