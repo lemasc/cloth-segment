@@ -1,92 +1,92 @@
-# M11 — Other people in LIP images
+# M11 — คนอื่นในภาพ LIP
 
-## In plain words
-LIP labels **one person per image**. Anyone else in the photo counts as background. CIHP, which we also train on, labels **every person**. So the models also parse the extra people in LIP test images, and each of those pixels is scored as wrong.
-In 45 LIP test images checked by eye, this was the cause in 28. The check covered the images with the most of these errors, plus a random draw.
-Ignoring these large areas would raise LIP mIoU by about 0.04–0.05 for every model, but the ranking of the models and the gaps between them stay the same. This is a difference in labelling rules between the datasets, so no change to the model can fix it. We record it as a limitation.
+## สรุปสั้น ๆ
+LIP ทำ label **เพียงหนึ่งคนต่อภาพ** คนอื่นในภาพจะถูกนับเป็นพื้นหลัง (background) ส่วน CIHP ซึ่งเราใช้เทรนด้วย ทำ label **ทุกคน** ดังนั้นโมเดลจึงแยกส่วนของคนอื่นในภาพทดสอบ LIP ด้วย และพิกเซลเหล่านั้นถูกนับว่าผิดทั้งหมด
+จากภาพทดสอบ LIP 45 ภาพที่ตรวจด้วยตา สาเหตุนี้พบใน 28 ภาพ ชุดที่ตรวจคือภาพที่มีพิกเซลผิดประเภทนี้มากที่สุด รวมกับภาพที่สุ่มมา
+ถ้าไม่นับพื้นที่ผิดก้อนใหญ่เหล่านี้ mIoU ของ LIP จะสูงขึ้นประมาณ 0.04–0.05 กับทุกโมเดล แต่ลำดับของโมเดลและช่องว่างระหว่างโมเดลไม่เปลี่ยน นี่คือความต่างของกฎการทำ label ระหว่างสองชุดข้อมูล จึงไม่มีการแก้ที่ตัวโมเดลได้ เราบันทึกไว้เป็นข้อจำกัด
 
-## Why
-T10 found that 58% of X4's wrong `background` pixels on LIP are **interior**, meaning not at an edge. T10 suggested a cause (other people who are not labelled) but did not check it. M11 checks it.
+## ที่มา
+T10 พบว่า 58% ของพิกเซล `background` ที่ X4 ทำนายผิดบน LIP อยู่ **ด้านใน** คือไม่ได้อยู่ที่ขอบ T10 เสนอสาเหตุว่าเป็นคนอื่นที่ไม่ถูก label แต่ยังไม่ได้ตรวจ M11 คือการตรวจเรื่องนี้
 
-## Data and method
+## ข้อมูลและวิธีทำ
 
-- **Runs:** X2 `20261105-1307-1acb88f-unet-r34`, X3 `20261105-2050-f4e2ffe-deeplabv3p-r50`, X4 `20261105-2220-ac9a26b-segformer-b2` (`splits-v2-d023252b81d9`, `eval-v2`, `best.pt` step 40000). Test sets: LIP for all three runs, CIHP for X4 as the contrast.
-- **Prediction:** `scripts/multiperson.py configs/report/m11.yaml --wait` predicts again on the RTX 4070, using the same steps as `evaluate.py`, which is unchanged. It held the GPU lock for about 6 minutes.
-  - X2 and X3 produce the same confusion matrix as their `metrics.json` (max diff 0).
-  - X4 differs by up to 2,359 pixels (LIP) and 2,898 pixels (CIHP) in a single cell, because its `metrics.json` came from the RTX 3060. T10 saw the same thing.
-  - Outputs are in `data/analysis/M11/` and `data/review/M11/`.
-- **Tables:** `scripts/m11_results.py configs/report/m11.yaml [--sheets]` uses no GPU. Every number in this report comes from [`2026-11-08-M11-results.json`](2026-11-08-M11-results.json). [`2026-11-08-M11-tables.md`](2026-11-08-M11-tables.md) has the full tables.
-- **Definitions** (`src/cloth_segment/multiperson.py`):
-  - **wrong-person pixel:** ground truth is `background` and the prediction is any other class.
-  - **interior:** outside the T10 edge band (1% of the image diagonal).
+- **Run ที่ใช้:** X2 `20261105-1307-1acb88f-unet-r34`, X3 `20261105-2050-f4e2ffe-deeplabv3p-r50`, X4 `20261105-2220-ac9a26b-segformer-b2` (`splits-v2-d023252b81d9`, `eval-v2`, `best.pt` step 40000) ชุดทดสอบคือ LIP สำหรับทั้งสาม run และ CIHP สำหรับ X4 เพื่อใช้เปรียบเทียบ
+- **การทำนาย:** `scripts/multiperson.py configs/report/m11.yaml --wait` ทำนายใหม่บน RTX 4070 ด้วยขั้นตอนเดียวกับ `evaluate.py` ซึ่งไม่ได้แก้ไข ใช้ GPU lock ประมาณ 6 นาที
+  - X2 และ X3 ได้ confusion matrix เหมือนใน `metrics.json` ทุกค่า (ต่างสูงสุด 0)
+  - X4 ต่างได้สูงสุด 2,359 พิกเซล (LIP) และ 2,898 พิกเซล (CIHP) ในหนึ่งช่อง เพราะ `metrics.json` ของ X4 มาจาก RTX 3060 T10 ก็พบแบบเดียวกัน
+  - ผลลัพธ์อยู่ใน `data/analysis/M11/` และ `data/review/M11/`
+- **ตาราง:** `scripts/m11_results.py configs/report/m11.yaml [--sheets]` ไม่ใช้ GPU ตัวเลขทุกตัวในรายงานนี้มาจาก [`2026-11-08-M11-results.json`](2026-11-08-M11-results.json) ส่วนตารางเต็มอยู่ใน [`2026-11-08-M11-tables.md`](2026-11-08-M11-tables.md)
+- **นิยาม** (`src/cloth_segment/multiperson.py`):
+  - **พิกเซลคนผิด (wrong-person pixel):** ground truth เป็น `background` แต่โมเดลทำนายเป็นคลาสอื่น
+  - **ด้านใน (interior):** อยู่นอกแถบขอบของ T10 (1% ของเส้นทแยงมุมภาพ)
 
-## 1. How big and how concentrated
+## 1. ใหญ่แค่ไหน และกระจุกตัวแค่ไหน
 
-| run | test set | interior wrong-person px / GT background px | images with any |
+| run | ชุดทดสอบ | พิกเซลคนผิดด้านใน / พิกเซล GT background | ภาพที่มีอย่างน้อยหนึ่งพิกเซล |
 |---|---|---|---|
 | X2 | LIP | 0.0707 | 9,200 / 9,632 |
 | X3 | LIP | 0.0657 | 9,135 / 9,632 |
 | X4 | LIP | 0.0614 | 9,125 / 9,632 |
 | X4 | CIHP | 0.0146 | 3,908 / 5,000 |
 
-- **The rate on LIP is about 4 times the rate on CIHP.** CIHP labels every person, so an extra person there is a correct prediction.
-- **A few images hold most of it.** For X4 on LIP, the top 10% of images hold 71% of these pixels, and the top 25% hold 91%. So the errors come as large blobs in a small number of images, not as small noise everywhere.
-- **Small people are not the main reason.** The median person area in the top 10% of images is 0.35 of the image, against 0.44 for all LIP test images. That is lower, but these are not tiny-person crops.
-- **The strict test finds only a small part.** The strict test counts a predicted person that does not touch the labelled person at all. It finds only 12–14% of the pixels on LIP, because other people usually touch or overlap the labelled one in the photo. This is why the visual check below was needed.
+- **อัตราบน LIP สูงกว่า CIHP ประมาณ 4 เท่า** CIHP ทำ label ทุกคน การทำนายคนอื่นที่นั่นจึงถูกต้อง
+- **ไม่กี่ภาพมีพิกเซลผิดเกือบทั้งหมด** สำหรับ X4 บน LIP ภาพ 10% แรกมี 71% ของพิกเซลเหล่านี้ และ 25% แรกมี 91% ดังนั้นข้อผิดพลาดเป็นก้อนใหญ่ในภาพจำนวนน้อย ไม่ใช่ noise เล็ก ๆ กระจายทั่วไป
+- **คนตัวเล็กไม่ใช่เหตุผลหลัก** ค่ามัธยฐานของพื้นที่คนในภาพ 10% แรกคือ 0.35 ของภาพ เทียบกับ 0.44 ของภาพทดสอบ LIP ทั้งหมด ต่ำกว่าจริง แต่ไม่ใช่ภาพที่คนตัวเล็กมาก
+- **การทดสอบแบบเข้มพบได้เพียงส่วนน้อย** การทดสอบแบบเข้มนับเฉพาะคนที่โมเดลทำนายแล้วไม่แตะคนที่ถูก label เลย พบเพียง 12–14% ของพิกเซลบน LIP เพราะคนอื่นมักแตะหรือซ้อนกับคนที่ถูก label ในภาพ จึงต้องตรวจด้วยตาตามหัวข้อถัดไป
 
-## 2. Visual check
+## 2. ตรวจด้วยตา
 
-- **What was checked:** X4 on LIP, 45 images: the 30 images with the most interior wrong-person pixels, plus 15 drawn at random (seed 0) from the other images with at least 200 such pixels.
-- **What each sheet shows:** image | GT | prediction | wrong pixels in magenta, drawn to `data/review/M11/sheets/`. The sheets are dataset images, so they are not committed.
-- **Who read them:**
-  - A Claude subagent read all 45.
-  - A second Claude session checked 18 of them (sheets 0, 2 and 6) and changed one verdict (#40: the GT labels both women, and the wrong pixels are small gaps inside the people already labelled).
-  - A maintainer scanned all 8 sheets and agreed with the pattern. They changed two verdicts on sheet 4 (#26 and #29: the GT leaves the main person unlabelled) from `other_person` to `main_annotation_missing`.
-  - [`2026-11-08-M11-verdicts.csv`](2026-11-08-M11-verdicts.csv) keeps the first reading, which images were checked, and the final verdict.
+- **ภาพที่ตรวจ:** X4 บน LIP 45 ภาพ คือ 30 ภาพที่มีพิกเซลคนผิดด้านในมากที่สุด รวมกับ 15 ภาพที่สุ่ม (seed 0) จากภาพอื่นที่มีพิกเซลแบบนี้อย่างน้อย 200 พิกเซล
+- **สิ่งที่แต่ละ sheet แสดง:** ภาพ | GT | ผลทำนาย | พิกเซลผิดสีชมพูม่วง (magenta) วาดไว้ที่ `data/review/M11/sheets/` sheet เป็นภาพจากชุดข้อมูล จึงไม่ commit
+- **ใครอ่าน:**
+  - Claude subagent อ่านทั้ง 45 ภาพ
+  - Claude อีก session ตรวจซ้ำ 18 ภาพ (sheet 0, 2 และ 6) และแก้หนึ่งคำตัดสิน (#40: GT label ผู้หญิงทั้งสองคน และพิกเซลผิดเป็นช่องว่างเล็ก ๆ ภายในคนที่ถูก label แล้ว)
+  - ผู้ดูแลโครงการ (maintainer) ดูครบทั้ง 8 sheet และเห็นด้วยกับรูปแบบที่พบ โดยแก้สองคำตัดสินใน sheet 4 (#26 และ #29: GT ไม่ได้ label คนหลักของภาพ) จาก `other_person` เป็น `main_annotation_missing`
+  - [`2026-11-08-M11-verdicts.csv`](2026-11-08-M11-verdicts.csv) เก็บการอ่านครั้งแรก ภาพที่ถูกตรวจซ้ำ และคำตัดสินสุดท้าย
 
-| verdict | top 30 | random 15 | total |
+| คำตัดสิน | top 30 | สุ่ม 15 | รวม |
 |---|---|---|---|
-| other person(s) parsed | 24 | 4 | 28 |
-| main person not (fully) annotated in GT | 6 | 0 | 6 |
-| object or clutter (bag, bat, toy) | 0 | 4 | 4 |
-| mannequin, poster or reflection | 0 | 0 | 0 |
-| unclear (small areas) | 0 | 7 | 7 |
+| มีคนอื่นถูกทำนาย (other person) | 24 | 4 | 28 |
+| คนหลักไม่ถูก label ใน GT (ทั้งหมดหรือบางส่วน) | 6 | 0 | 6 |
+| วัตถุหรือของรก (กระเป๋า ไม้ตี ของเล่น) | 0 | 4 | 4 |
+| หุ่น โปสเตอร์ หรือเงาสะท้อน | 0 | 0 | 0 |
+| ไม่ชัดเจน (พื้นที่เล็ก) | 0 | 7 | 7 |
 
-- **The large blobs are other people.** This held in 24 of the top 30 images. In some of them, the person LIP labelled is not the main person in the photo, for example someone at the edge while the subject in the middle is background.
-- **The other 6 of the top 30 come from the same rule, seen from the other side.** The clear subject of the photo is not labelled in the GT at all.
-- **The random group is mostly small, mixed errors.** These 15 images hold only 0.2% of all interior wrong-person pixels on the test set; the top 30 hold 9.1%.
+- **ก้อนใหญ่คือคนอื่น** พบใน 24 จาก 30 ภาพบนสุด บางภาพ คนที่ LIP label ไม่ใช่คนหลักของภาพ เช่น เป็นคนที่ขอบภาพ ขณะที่ตัวเอกตรงกลางถูกนับเป็นพื้นหลัง
+- **อีก 6 ภาพจาก 30 ภาพบนสุดมาจากกฎเดียวกัน แต่มองจากอีกด้าน** ตัวเอกของภาพไม่ถูก label ใน GT เลย หรือถูก label เพียงบางส่วน
+- **กลุ่มสุ่มส่วนใหญ่เป็นข้อผิดพลาดเล็กและหลากหลาย** 15 ภาพนี้มีพิกเซลคนผิดด้านในเพียง 0.2% ของทั้งชุดทดสอบ ส่วน 30 ภาพบนสุดมี 9.1%
 
-## 3. Effect on the scores (analysis only)
+## 3. ผลต่อคะแนน (เพื่อการวิเคราะห์เท่านั้น)
 
-**Rule:** take each interior wrong-person blob (8-connected) that covers at least a set share of the image, plus the wrong-person pixels within the edge band width of it, and leave those pixels out of the score.
+**กฎ:** นำก้อนพิกเซลคนผิดด้านใน (เชื่อมแบบ 8 ทิศ) ที่ใหญ่อย่างน้อยตามสัดส่วนของภาพที่กำหนด รวมกับพิกเซลคนผิดที่อยู่ในระยะเท่าความกว้างแถบขอบจากก้อนนั้น ออกจากการคิดคะแนน
 
-**Limit:** this rule cannot tell another person from an object or an unlabelled main person, so the change is an **upper bound**. **It is not an official score.**
+**ข้อจำกัด:** กฎนี้แยกไม่ออกว่าเป็นคนอื่น วัตถุ หรือคนหลักที่ไม่ถูก label ดังนั้นการเปลี่ยนแปลงนี้เป็น **ขอบบน (upper bound)** **ไม่ใช่คะแนนทางการ**
 
-mIoU over 11 classes, without `accessory`:
+mIoU 11 คลาส ไม่รวม `accessory`:
 
-| run | test set | official | blob ≥ 0.5% | blob ≥ 1% | blob ≥ 2% | images affected (1%) |
+| run | ชุดทดสอบ | ทางการ | ก้อน ≥ 0.5% | ก้อน ≥ 1% | ก้อน ≥ 2% | ภาพที่ได้ผล (1%) |
 |---|---|---|---|---|---|---|
 | X2 | LIP | 0.5924 | 0.6428 | 0.6386 | 0.6330 | 3,807 |
 | X3 | LIP | 0.6071 | 0.6549 | 0.6506 | 0.6447 | 3,682 |
 | X4 | LIP | 0.6399 | 0.6879 | 0.6838 | 0.6783 | 3,311 |
 | X4 | CIHP | 0.6682 | 0.6802 | 0.6781 | 0.6756 | 708 |
 
-- **LIP gains +0.043 to +0.046 at 1% for every model; CIHP gains only +0.010.**
-- **The ranking and the gaps do not change.** X4 − X2 is +0.047 in the official score and +0.045 at 1%; X4 − X3 is +0.033 in both. **This problem does not affect the model comparison.**
-- **Which classes it touches:** for X4 on LIP at 1%, the classes that rise most are `background` (+0.051), `skin` (+0.067), `hair` (+0.056), `pants` (+0.052) and `face` (+0.051). **`dress` (+0.021) and `skirt` (+0.016) barely move**, so this problem is not why those two classes are low (T9, T10).
+- **LIP เพิ่มขึ้น +0.043 ถึง +0.046 ที่ 1% กับทุกโมเดล ส่วน CIHP เพิ่มเพียง +0.010**
+- **ลำดับและช่องว่างระหว่างโมเดลไม่เปลี่ยน** X4 − X2 คือ +0.047 ในคะแนนทางการ และ +0.045 ที่ 1% ส่วน X4 − X3 คือ +0.033 ทั้งสองแบบ **ปัญหานี้ไม่กระทบการเปรียบเทียบโมเดล**
+- **คลาสที่ได้ผล:** สำหรับ X4 บน LIP ที่ 1% คลาสที่เพิ่มมากที่สุดคือ `background` (+0.051), `skin` (+0.067), `hair` (+0.056), `pants` (+0.052) และ `face` (+0.051) ส่วน **`dress` (+0.021) และ `skirt` (+0.016) แทบไม่ขยับ** ปัญหานี้จึงไม่ใช่เหตุผลที่สองคลาสนั้นต่ำ (T9, T10)
 
-## 4. Conclusion
+## 4. สรุป
 
-- **The T10 hypothesis holds.** Most interior background errors on LIP come from people that LIP does not label.
-- **The cause is the fusion of the datasets.** LIP and CIHP use different rules for who gets labelled: LIP labels one person, CIHP labels everyone. The same prediction counts as right on CIHP and wrong on LIP. This is evidence for the label conflicts between datasets that we already list in the limitations.
-- **We will not fix it.** We would have to change the LIP test set (rule D4, and "Never alter the protocol or test sets to improve a number" in CONTRIBUTING section 4), or train the model to label only one person, which would break the CIHP rule. **We record it as a limitation.**
+- **สมมติฐานของ T10 เป็นจริง** ข้อผิดพลาดด้านในของ background บน LIP ส่วนใหญ่มาจากคนที่ LIP ไม่ได้ label
+- **สาเหตุคือการรวมชุดข้อมูล** LIP และ CIHP ใช้กฎต่างกันว่าใครถูก label: LIP label หนึ่งคน CIHP label ทุกคน การทำนายเดียวกันจึงถูกบน CIHP แต่ผิดบน LIP นี่เป็นหลักฐานของความขัดแย้งของ label ระหว่างชุดข้อมูล ซึ่งเราบันทึกไว้ในข้อจำกัดอยู่แล้ว
+- **เราจะไม่แก้** การแก้ต้องเปลี่ยนชุดทดสอบ LIP (กฎ D4 และ "Never alter the protocol or test sets to improve a number" ใน CONTRIBUTING หัวข้อ 4) หรือสอนโมเดลให้ label แค่คนเดียว ซึ่งขัดกับกฎของ CIHP **เราบันทึกเป็นข้อจำกัด**
 
-## Limitations of this analysis
+## ข้อจำกัดของการวิเคราะห์นี้
 
-- The verdicts come from AI readers (one reading plus a check of 18 images) and one maintainer's scan of the sheets, and come from 45 images only. The random group is too small to give rates.
-- The score change is an upper bound (section 3).
-- All analysis predictions ran on the RTX 4070. X4's official scores came from the RTX 3060; the difference is shown above.
+- คำตัดสินมาจากผู้อ่านที่เป็น AI (อ่านหนึ่งครั้ง และตรวจซ้ำ 18 ภาพ) กับการไล่ดู sheet ของ maintainer และมาจากเพียง 45 ภาพ กลุ่มสุ่มเล็กเกินกว่าจะให้อัตราที่เชื่อถือได้
+- การเปลี่ยนของคะแนนเป็นขอบบน (หัวข้อ 3)
+- การทำนายเพื่อวิเคราะห์ทั้งหมดรันบน RTX 4070 ส่วนคะแนนทางการของ X4 มาจาก RTX 3060 ความต่างแสดงไว้ข้างบน
 
-## Next
+## ขั้นต่อไป
 
-- **T11:** use this as a limitation and dataset-fusion slide: one or two example images, plus the table in section 3. Check the LIP licence before showing images (T9 open item).
+- **T11:** ใช้เป็นสไลด์เรื่องข้อจำกัดและการรวมชุดข้อมูล: ภาพตัวอย่างหนึ่งหรือสองภาพ กับตารางในหัวข้อ 3 ตรวจสิทธิ์การใช้ (licence) ของ LIP ก่อนแสดงภาพ (ประเด็นค้างจาก T9)
