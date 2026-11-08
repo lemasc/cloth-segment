@@ -24,6 +24,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 import numpy as np
+import pandas as pd
 from scipy import ndimage
 
 from cloth_segment import errors
@@ -106,3 +107,43 @@ def concentration(values: np.ndarray, tops: Sequence[float]) -> dict[str, float]
         k = int(round(len(v) * t))
         out[str(t)] = float(v[:k].sum() / total) if total > 0 else 0.0
     return out
+
+
+def pick_review(
+    stats: pd.DataFrame, top: int, n_random: int, min_px: int, seed: int
+) -> pd.DataFrame:
+    """Images to look at: the `top` largest `fp_int`, then `n_random` drawn from the rest
+    with `fp_int >= min_px`. Adds `group` (top | random) and `n` (0..); order is stable."""
+    top_df = stats.sort_values("fp_int", ascending=False).head(top).assign(group="top")
+    rest = stats[(stats["fp_int"] >= min_px) & ~stats["i"].isin(top_df["i"])]
+    rnd = rest.sample(min(n_random, len(rest)), random_state=seed).assign(group="random")
+    out = pd.concat([top_df, rnd]).reset_index(drop=True)
+    out["n"] = range(len(out))
+    return out
+
+
+def tally_verdicts(
+    verdicts: pd.DataFrame, sample: pd.DataFrame, codes: Sequence[str]
+) -> pd.DataFrame:
+    """Images per verdict and group, plus the interior false-person pixels they hold.
+
+    `verdicts` needs `n`, `id`, `verdict` and must match `sample` (`n`, `id`, `group`, `fp_int`).
+    """
+    m = sample[["n", "id", "group", "fp_int"]].merge(
+        verdicts[["n", "id", "verdict"]], on=["n", "id"], how="outer", indicator=True
+    )
+    if (m["_merge"] != "both").any():
+        bad = m.loc[m["_merge"] != "both", ["n", "id"]].to_dict("records")
+        raise ValueError(f"verdicts do not match the sample: {bad}")
+    unknown = set(m["verdict"]) - set(codes)
+    if unknown:
+        raise ValueError(f"unknown verdicts {sorted(unknown)}")
+    rows = []
+    for code in codes:
+        r = {"verdict": code}
+        for g in ("top", "random"):
+            r[g] = int(((m["verdict"] == code) & (m["group"] == g)).sum())
+        r["total"] = r["top"] + r["random"]
+        r["fp_int"] = int(m.loc[m["verdict"] == code, "fp_int"].sum())
+        rows.append(r)
+    return pd.DataFrame(rows)

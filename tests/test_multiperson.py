@@ -1,6 +1,7 @@
 """Multi-person counts (M11): tiny synthetic masks, no data, no GPU."""
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from cloth_segment import errors, multiperson
@@ -90,3 +91,39 @@ def test_concentration():
     c = multiperson.concentration(v, [0.1, 0.2, 1.0])
     assert c == {"0.1": 0.5, "0.2": 0.8, "1.0": 1.0}
     assert multiperson.concentration(np.zeros(4), [0.5]) == {"0.5": 0.0}
+
+
+def _stats() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "i": range(10),
+            "id": [f"im{k}" for k in range(10)],
+            "fp_int": [5, 900, 0, 300, 250, 800, 199, 210, 1000, 50],
+        }
+    )
+
+
+def test_pick_review_top_then_random_from_the_rest():
+    s = multiperson.pick_review(_stats(), top=3, n_random=2, min_px=200, seed=0)
+    assert s["group"].tolist() == ["top"] * 3 + ["random"] * 2
+    assert s["fp_int"].head(3).tolist() == [1000, 900, 800]
+    rnd = s[s["group"] == "random"]
+    assert set(rnd["id"]) <= {"im3", "im4", "im7"}
+    assert s["n"].tolist() == list(range(5))
+    again = multiperson.pick_review(_stats(), top=3, n_random=2, min_px=200, seed=0)
+    assert again.equals(s)
+    assert len(multiperson.pick_review(_stats(), 3, 10, 200, 0)) == 6  # only 3 left
+
+
+def test_tally_verdicts_counts_and_checks_the_sample():
+    s = multiperson.pick_review(_stats(), top=2, n_random=1, min_px=200, seed=0)
+    v = s[["n", "id"]].assign(verdict=["other_person", "unclear", "other_person"])
+    t = multiperson.tally_verdicts(v, s, ["other_person", "unclear", "object_clutter"])
+    row = t.set_index("verdict")
+    assert row.loc["other_person", "top"] == 1 and row.loc["other_person", "random"] == 1
+    assert row.loc["object_clutter", "total"] == 0
+    assert row.loc["unclear", "fp_int"] == 900
+    with pytest.raises(ValueError):
+        multiperson.tally_verdicts(v.iloc[:2], s, ["other_person", "unclear"])
+    with pytest.raises(ValueError):
+        multiperson.tally_verdicts(v.assign(verdict="nope"), s, ["other_person"])
