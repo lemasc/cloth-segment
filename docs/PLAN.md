@@ -78,7 +78,7 @@ run folder (D7) and the report are the record; the config hash is in
 
 | ID | Task | Status |
 |---|---|---|
-| E1 | Multi-task on DFMM: segmentation + attribute heads, reported per task (for the 4-pt difficulty score) | doing |
+| E1 | Multi-task on DFMM: segmentation + attribute heads, reported per task (for the 4-pt difficulty score) | done |
 | E2 | Single-dataset vs merged training; cross-dataset table | todo |
 | E3 | Loss comparison: CE vs CE + Dice | todo |
 | E4 | Fashionpedia as out-of-domain test set (garment classes only) | todo |
