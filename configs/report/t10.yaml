@@ -1,0 +1,55 @@
+# T10 error analysis: runs, error-zone settings and where results go.
+# Read by scripts/error_zones.py (GPU) and scripts/t10_results.py (no GPU).
+# Not a training config: it has no run hash and changes no run.
+
+runs: # alias -> run folder and model name (same as configs/report/t9.yaml)
+  X2: {name: 20261105-1307-1acb88f-unet-r34, model: U-Net R34}
+  X3: {name: 20261105-2050-f4e2ffe-deeplabv3p-r50, model: DeepLabV3+ R50}
+  X4: {name: 20261105-2220-ac9a26b-segformer-b2, model: SegFormer-B2}
+
+datasets: [lip, cihp, dfmm] # test sets (D4)
+
+zones:
+  # Edge band width as a share of the image diagonal. 0.01 is the headline;
+  # 0.005 and 0.02 check that the conclusion does not hang on the choice.
+  fracs: [0.005, 0.01, 0.02]
+  headline: 0.01
+  out_dir: analysis/T10/zones # under data/ (shared mount); one JSON per run and test set
+
+exclude: [accessory] # headline mIoU rule (M6), as in T9
+
+breakdown_dir: review/M10/breakdown # under data/; per-image counts (M10)
+
+# Scores by image size and shape (asked for in M1, M2 and T3). Each bucket is
+# scored like a test set (its images' pixel counts added up). DFMM images are all
+# 1101 x 750 with one person of similar size, so DFMM is left out of all three.
+buckets:
+  short_side:
+    title: "image short side (px)"
+    value: short_side
+    datasets: [lip, cihp]
+    edges: [0, 128, 192, 256, 384, 100000]
+    labels: ["<128", "128-191", "192-255", "256-383", ">=384"]
+  aspect:
+    title: "aspect ratio (height / width)"
+    value: aspect
+    datasets: [lip] # CIHP is almost all landscape
+    edges: [0, 1.25, 1.75, 2.5, 100]
+    labels: ["<1.25", "1.25-1.75", "1.75-2.5", ">=2.5"]
+  person_share:
+    title: "person area (non-background share of the image)"
+    value: person_share
+    datasets: [lip, cihp]
+    edges: [0, 0.2, 0.35, 0.5, 1.01]
+    labels: ["<20%", "20-35%", "35-50%", ">=50%"]
+
+review: configs/review/t10.yaml # CIHP dress review (samples and verdicts)
+# Independent second reading of the same images (AI, did not see the verdicts).
+review_second: docs/reports/2026-11-07-T10-verdicts-second.csv
+# Images where every run misses the raw class (the pool the review's worst picks come from).
+review_proxy: {dataset: cihp, raw: [dress], below: 0.1}
+
+out: # repo paths, committed (small JSON, Markdown and PNG; no dataset images)
+  json: docs/reports/2026-11-07-T10-results.json
+  tables: docs/reports/2026-11-07-T10-tables.md
+  figures: docs/reports/figures/T10
