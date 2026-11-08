@@ -116,7 +116,8 @@ def tile(cfg: dict, row, manifest: pd.DataFrame) -> np.ndarray:
 def sheets(cfg: dict, s: pd.DataFrame) -> list[Path]:
     """Two columns of tiles per sheet, `per_sheet` tiles each."""
     rv = cfg["review"]
-    man = pd.read_csv(paths.DATA / "splits/splits-v2/manifest.csv", dtype={"id": str})
+    cols = ["dataset", "split", "id", "image", "mask"]
+    man = pd.read_csv(paths.DATA / "splits/splits-v2/manifest.csv", usecols=cols, dtype=str)
     man = man[(man["dataset"] == rv["dataset"]) & (man["split"] == "test")].set_index("id")
     out = paths.DATA / rv["out_dir"] / "sheets"
     out.mkdir(parents=True, exist_ok=True)
