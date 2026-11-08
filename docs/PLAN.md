@@ -74,7 +74,7 @@ run folder (D7) and the report are the record; the config hash is in
 | X3 | DeepLabV3+ R50, 40k (needs T7) | `deeplabv3p_r50.yaml` | `20261105-2050-f4e2ffe-deeplabv3p-r50` · `reports/2026-11-05-X3-deeplabv3p-r50.md` | done |
 | X4 | SegFormer-B2, 40k (needs T8) | `segformer_b2.yaml` | `20261105-2220-ac9a26b-segformer-b2` · `reports/2026-11-06-X4-segformer-b2.md` | done |
 | X5 | E1 multi-task SegFormer-B2 + attribute heads, seed 1, 40k, RTX 4070 (needs E1) | `segformer_b2_mt.yaml` | `20261108-1152-2ed6c81-segformer-b2-mt` · `reports/2026-11-08-X5-segformer-b2-mt.md` | done |
-| X6 | SegFormer-B2, seed 1, 40k, RTX 4070: reference for X5, second SegFormer seed | `segformer_b2_s1.yaml` | | todo |
+| X6 | SegFormer-B2, seed 1, 40k, RTX 4070: reference for X5, second SegFormer seed | `segformer_b2_s1.yaml` | | doing |
 
 ### Extensions (if time allows)
 
