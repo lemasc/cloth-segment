@@ -98,4 +98,4 @@ run folder (D7) and the report are the record; the config hash is in
 | M8 | Add experiment (X) rows to the plan; split T7/T8 into code and training; backfill X1, X2 | done |
 | M9 | Record GPU name, memory, capability and driver in `meta.json`; backfill script for old runs | done |
 | M10 | Data concerns from model results (X2–X4): per-raw-class and per-image breakdown of the test sets | done |
-| M11 | LIP multi-person check: are LIP interior background errors other (unlabelled) people? | doing |
+| M11 | LIP multi-person check: are LIP interior background errors other (unlabelled) people? | done |
