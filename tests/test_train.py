@@ -164,7 +164,8 @@ def test_run_seeds_the_model_and_records_params(tmp_path, monkeypatch):
     monkeypatch.setattr(train, "load_split", lambda *a, **k: None)
     seen = {}
 
-    def fake_fit(cfg, run_dir, device, *, model, train_set, val_set):
+    def fake_fit(cfg, run_dir, device, *, model, train_set, val_set, attr_val_set=None):
+        assert attr_val_set is None  # segmentation-only model
         seen["weight"] = model.conv.weight.detach().clone()
         return {"steps": 0}
 
