@@ -17,6 +17,12 @@ One loop for every model (D5). Flow:
    `meta.json` (`finished` or `failed`). `meta.json` also records the
    parameter count (`params`, `trainable_params`), reported with results (D5).
 
+Multi-task models (E1, `forward_multi`): the loss is
+`L_seg + model.attr.loss_weight * L_attr` (`attributes.attr_loss`), and each
+check also logs attribute macro-F1 on the DFMM val split. The checkpoint rule
+(`eval.select`) stays segmentation-only, so `best.pt` is chosen as for the
+other models. Segmentation-only models train exactly as before.
+
 On CUDA, PyTorch is capped to the GPU memory free at start, so a batch that
 does not fit raises OOM instead of spilling into system RAM (WSL, T5 probe).
 """
@@ -38,7 +44,7 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
 
-from cloth_segment import evaluate, hardware, runs
+from cloth_segment import attr_eval, attributes, evaluate, hardware, runs
 from cloth_segment.data.dataset import SegDataset, collate, load_split, make_sampler
 from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
 from cloth_segment.models import build_model, count_parameters, logits_at
@@ -136,8 +142,12 @@ def fit(
     model: nn.Module,
     train_set: SegDataset,
     val_set: SegDataset,
+    attr_val_set: SegDataset | None = None,
 ) -> dict:
-    """Train and validate; returns the fields for `meta.json`."""
+    """Train and validate; returns the fields for `meta.json`.
+
+    `attr_val_set` (DFMM val) is needed when the model has attribute heads.
+    """
     tr, oc = cfg["train"], cfg["optim"]
     iters = tr["iters"]
     torch.manual_seed(cfg["seed"])
@@ -155,6 +165,15 @@ def fit(
     if select not in evaluate.SELECT_RULES:  # fail before training, not at the first check
         raise ValueError(f"eval.select must be one of {evaluate.SELECT_RULES}, got {select!r}")
     split = cfg["eval"]["split"]
+    multi = hasattr(model, "forward_multi")
+    if multi and attr_val_set is None:
+        raise ValueError("a multi-task model needs attr_val_set")
+    attr_loader = (
+        evaluate.eval_loader(attr_val_set, tr["batch_size"], cfg["run"]["num_workers"])
+        if multi
+        else None
+    )
+    parts = {"seg_loss": 0.0, "attr_loss": 0.0, "attr_images": 0}
 
     ckpt = run_dir / "ckpt"
     ckpt.mkdir(exist_ok=True)
@@ -171,8 +190,18 @@ def fit(
         x = batch["image"].to(device, non_blocking=True)
         y = batch["mask"].to(device, non_blocking=True)
         with evaluate.autocast(device, dtype):
-            logits = model(x)
+            if multi:
+                logits, attr_logits = model.forward_multi(x)
+            else:
+                logits = model(x)
         loss = loss_fn(logits, y, cfg["loss"])
+        if multi:
+            targets = attributes.head_targets(batch["attrs"], model.spec).to(device)
+            a_loss, n_img = attributes.attr_loss(attr_logits, targets)
+            parts["seg_loss"] += loss.item()
+            parts["attr_loss"] += a_loss.item()
+            parts["attr_images"] += n_img
+            loss = loss + model.spec.loss_weight * a_loss
         if not torch.isfinite(loss):
             raise FloatingPointError(f"loss is {loss.item()} at step {step}")
         opt.zero_grad(set_to_none=True)
@@ -186,11 +215,16 @@ def fit(
 
         if step % log_every == 0 or step == iters:
             now = time.perf_counter()
+            extra = {}
+            if multi:  # means over the logged steps; attr_loss counts empty batches as 0
+                extra = {k: v / loss_n for k, v in parts.items()}
+                parts = dict.fromkeys(parts, 0.0)
             log.write(
                 step=step,
                 loss=loss_sum / loss_n,
                 lr=lr,
                 sec_per_iter=(now - t_log) / loss_n,
+                **extra,
             )
             print(f"step {step}/{iters} loss {loss_sum / loss_n:.4f}", flush=True)
             loss_sum, loss_n, t_log = 0.0, 0, now
@@ -206,6 +240,23 @@ def fit(
             value = evaluate.selection_value(val, select)
             log.write(step=step, split=split, select=select, value=value)
             print(f"step {step} {split} {_summary(val, select, value)}", flush=True)
+            attr = None
+            if multi:
+                ay, ap = attr_eval.predict_attrs(model, attr_loader, device, dtype)
+                model.train()
+                attr = attributes.all_metrics(ay, ap, model.spec, attr_eval.MIN_COUNT)
+                f1 = {h: m["macro_f1"] for h, m in attr["heads"].items()}
+                log.write(
+                    step=step,
+                    split=split,
+                    task="attr",
+                    dataset=attr_eval.DATASET,
+                    mean_macro_f1=attr["mean_macro_f1"],
+                    mean_accuracy=attr["mean_accuracy"],
+                    macro_f1=f1,
+                )
+                mf1 = attr["mean_macro_f1"]
+                print(f"step {step} {split} attr mean macro-F1 {_fmt(mf1)}", flush=True)
             torch.save(
                 {
                     "step": step,
@@ -217,7 +268,7 @@ def fit(
                 ckpt / "last.pt",
             )
             if value is not None and value > best["value"]:
-                best = {"step": step, "value": value, "val": val}
+                best = {"step": step, "value": value, "val": val, "attr": attr}
                 torch.save({"step": step, "model": model.state_dict()}, ckpt / "best.pt")
             t_log = time.perf_counter()  # do not count eval time as train time
             eval_seconds += t_log - t_eval
@@ -227,6 +278,9 @@ def fit(
             f"no best.pt: val {select} was undefined at every check (a val dataset has no labels?)"
         )
     total = time.perf_counter() - t0
+    extra = {}
+    if multi:
+        extra["best_val_attr_mean_macro_f1"] = best["attr"]["mean_macro_f1"]
     return {
         "steps": iters,
         "best_step": best["step"],
@@ -236,6 +290,7 @@ def fit(
         "best_val_miou": best["val"]["miou"],  # pooled (eval-v1 meaning), for comparison
         "train_seconds": round(total - eval_seconds, 1),  # without validation
         "eval_seconds": round(eval_seconds, 1),
+        **extra,
     }
 
 
@@ -245,12 +300,13 @@ def seeded_model(cfg: dict) -> nn.Module:
     return build_model(cfg["model"])
 
 
-def _summary(val: dict, select: str, value: float | None) -> str:
-    def f(x: float | None) -> str:
-        return "undefined" if x is None else f"{x:.4f}"
+def _fmt(x: float | None) -> str:
+    return "undefined" if x is None else f"{x:.4f}"
 
-    parts = [f"{n} {f(s['miou'])}" for n, s in val["datasets"].items()]
-    return f"{select} {f(value)} (mIoU {', '.join(parts)}; pooled {f(val['miou'])})"
+
+def _summary(val: dict, select: str, value: float | None) -> str:
+    parts = [f"{n} {_fmt(s['miou'])}" for n, s in val["datasets"].items()]
+    return f"{select} {_fmt(value)} (mIoU {', '.join(parts)}; pooled {_fmt(val['miou'])})"
 
 
 def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
@@ -263,6 +319,10 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
     model = seeded_model(cfg)  # fail before taking the lock or making a folder
     train_set = load_split(cfg, "train")
     val_set = load_split(cfg, cfg["eval"]["split"], train=False)
+    attr_val_set = None
+    if hasattr(model, "forward_multi"):  # attribute labels exist on DFMM only
+        dfmm = cfg | {"data": cfg["data"] | {"datasets": [attr_eval.DATASET]}}
+        attr_val_set = load_split(dfmm, cfg["eval"]["split"], train=False)
 
     lock = runs.gpu_lock(slug, wait=wait) if device.type == "cuda" else contextlib.nullcontext()
     with lock:
@@ -278,7 +338,15 @@ def run(config: Path, *, device: torch.device, wait: bool = False) -> Path:
                 params=count_parameters(model),
                 trainable_params=count_parameters(model, trainable_only=True),
             )
-            result = fit(cfg, run_dir, device, model=model, train_set=train_set, val_set=val_set)
+            result = fit(
+                cfg,
+                run_dir,
+                device,
+                model=model,
+                train_set=train_set,
+                val_set=val_set,
+                attr_val_set=attr_val_set,
+            )
         except BaseException as e:  # also Ctrl-C: the folder must not stay "running"
             runs.mark_failed(run_dir, f"{type(e).__name__}: {e}")
             (run_dir / "error.txt").write_text(traceback.format_exc())
