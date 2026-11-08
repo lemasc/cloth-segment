@@ -58,5 +58,6 @@ def count_parameters(model: nn.Module, trainable_only: bool = False) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad or not trainable_only)
 
 
-# Model modules register themselves on import (T6: unet, T7: deeplab, T8: segformer).
-from cloth_segment.models import deeplab, segformer, unet  # noqa: E402, F401  (registers builders)
+# Model modules register themselves on import (T6: unet, T7: deeplab, T8: segformer,
+# E1: multitask).
+from cloth_segment.models import deeplab, multitask, segformer, unet  # noqa: E402, F401
