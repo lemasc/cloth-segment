@@ -2,7 +2,7 @@
 
 ## In plain words
 LIP labels **one person per image**. Anyone else in the photo counts as background. CIHP, which we also train on, labels **every person**. So the models also parse the extra people in LIP test images, and each of those pixels is scored as wrong.
-In 45 LIP test images checked by eye, this was the cause in 30. The check covered the images with the most of these errors, plus a random draw.
+In 45 LIP test images checked by eye, this was the cause in 28. The check covered the images with the most of these errors, plus a random draw.
 Ignoring these large areas would raise LIP mIoU by about 0.04–0.05 for every model, but the ranking of the models and the gaps between them stay the same. This is a difference in labelling rules between the datasets, so no change to the model can fix it. We record it as a limitation.
 
 ## Why
@@ -41,19 +41,19 @@ T10 found that 58% of X4's wrong `background` pixels on LIP are **interior**, me
 - **Who read them:**
   - A Claude subagent read all 45.
   - A second Claude session checked 18 of them (sheets 0, 2 and 6) and changed one verdict (#40: the GT labels both women, and the wrong pixels are small gaps inside the people already labelled).
-  - No human has read them yet.
+  - A maintainer scanned all 8 sheets and agreed with the pattern. They changed two verdicts on sheet 4 (#26 and #29: the GT leaves the main person unlabelled) from `other_person` to `main_annotation_missing`.
   - [`2026-11-08-M11-verdicts.csv`](2026-11-08-M11-verdicts.csv) keeps the first reading, which images were checked, and the final verdict.
 
 | verdict | top 30 | random 15 | total |
 |---|---|---|---|
-| other person(s) parsed | 26 | 4 | 30 |
-| main person not (fully) annotated in GT | 4 | 0 | 4 |
+| other person(s) parsed | 24 | 4 | 28 |
+| main person not (fully) annotated in GT | 6 | 0 | 6 |
 | object or clutter (bag, bat, toy) | 0 | 4 | 4 |
 | mannequin, poster or reflection | 0 | 0 | 0 |
 | unclear (small areas) | 0 | 7 | 7 |
 
-- **The large blobs are other people.** This held in 26 of the top 30 images. In some of them, the person LIP labelled is not the main person in the photo, for example someone at the edge while the subject in the middle is background.
-- **The other 4 of the top 30 come from the same rule, seen from the other side.** The clear subject of the photo is not labelled in the GT at all.
+- **The large blobs are other people.** This held in 24 of the top 30 images. In some of them, the person LIP labelled is not the main person in the photo, for example someone at the edge while the subject in the middle is background.
+- **The other 6 of the top 30 come from the same rule, seen from the other side.** The clear subject of the photo is not labelled in the GT at all.
 - **The random group is mostly small, mixed errors.** These 15 images hold only 0.2% of all interior wrong-person pixels on the test set; the top 30 hold 9.1%.
 
 ## 3. Effect on the scores (analysis only)
@@ -83,11 +83,10 @@ mIoU over 11 classes, without `accessory`:
 
 ## Limitations of this analysis
 
-- The verdicts come from AI readers (one reading plus a check of 18 images), not from a human, and come from 45 images only. The random group is too small to give rates.
+- The verdicts come from AI readers (one reading plus a check of 18 images) and one maintainer's scan of the sheets, and come from 45 images only. The random group is too small to give rates.
 - The score change is an upper bound (section 3).
 - All analysis predictions ran on the RTX 4070. X4's official scores came from the RTX 3060; the difference is shown above.
 
 ## Next
 
 - **T11:** use this as a limitation and dataset-fusion slide: one or two example images, plus the table in section 3. Check the LIP licence before showing images (T9 open item).
-- **Maintainer (optional):** read some of the sheets in `data/review/M11/sheets/` and confirm or change the verdicts.

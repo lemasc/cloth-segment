@@ -25,10 +25,10 @@ n,group,id,fp_int,verdict,first_reading,second_check,note
 23,top,526057_900100526057,57073,other_person,other_person,no,
 24,top,476230_219631,56680,other_person,other_person,no,
 25,top,329018_1241465,56349,main_annotation_missing,main_annotation_missing,no,GT entirely background; red jacket person unlabelled
-26,top,259595_434798,56221,other_person,other_person,no,GT labels adult hands/arm; baby unlabelled
+26,top,259595_434798,56221,main_annotation_missing,other_person,no,GT labels adult hands/arm; baby unlabelled
 27,top,248251_2198487,54346,other_person,other_person,no,
 28,top,551710_900100551710,53630,other_person,other_person,no,
-29,top,478906_566099,53398,other_person,other_person,no,GT labels a person at the edge; main woman unlabelled
+29,top,478906_566099,53398,main_annotation_missing,other_person,no,GT labels a person at the edge; main woman unlabelled
 30,random,205672_191449,849,unclear,unclear,no,
 31,random,350497_195147,863,object_clutter,object_clutter,no,
 32,random,63482_452218,603,unclear,unclear,no,
