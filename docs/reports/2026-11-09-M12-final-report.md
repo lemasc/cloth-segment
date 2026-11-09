@@ -298,7 +298,7 @@ model:
 
 ```python
 def forward_multi(self, x):
-    features = self.net.encoder(self.pad(x))                # encoder ร่วม
+    features = self.net.encoder(self.pad(x))  # encoder ร่วม
     masks = self.net.segmentation_head(self.net.decoder(features))
     return self.restore(masks, ...), self.attr_head(features[-1])
 ```
