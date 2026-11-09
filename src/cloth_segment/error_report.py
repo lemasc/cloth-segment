@@ -421,7 +421,7 @@ def plot_class_zones(res: Mapping, out: Path) -> Path:
     """Per test set, per class: zone shares of the last run's wrong pixels (stacked bars)."""
     datasets = list(res["datasets"])
     last = list(res["runs"])[-1]
-    fig = Figure(figsize=(11, 2.6 * len(datasets) + 0.8), facecolor=SURFACE)
+    fig = Figure(figsize=(11, 3.1 * len(datasets) + 0.8), facecolor=SURFACE)
     axes = np.atleast_1d(fig.subplots(len(datasets), 1, sharex=True))
     x = np.arange(len(SHARED_CLASSES))
     for ax, d in zip(axes, datasets, strict=True):
@@ -447,7 +447,9 @@ def plot_class_zones(res: Mapping, out: Path) -> Path:
         for s in ("top", "right"):
             ax.spines[s].set_visible(False)
         ax.tick_params(colors=MUTED)
-    axes[-1].set_xticks(x, SHARED_CLASSES, rotation=30, ha="right", color=INK)
+        # class names under every panel, not only the last (sharex hides them)
+        ax.set_xticks(x, SHARED_CLASSES, rotation=30, ha="right", color=INK)
+        ax.tick_params(axis="x", labelbottom=True)
     axes[0].legend(
         frameon=False, labelcolor=INK, ncols=3, loc="lower left", bbox_to_anchor=(0, 1.02)
     )

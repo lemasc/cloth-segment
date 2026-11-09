@@ -555,7 +555,7 @@ def plot_headline(res: Mapping, out: Path) -> Path:
 def plot_per_class(res: Mapping, out: Path, metric: str = "iou") -> Path:
     """One panel per test set: per-class IoU (or Dice) of each run as grouped bars."""
     aliases, datasets = list(res["runs"]), list(res["datasets"])
-    fig = Figure(figsize=(11, 2.9 * len(datasets) + 0.6), facecolor=SURFACE)
+    fig = Figure(figsize=(11, 3.4 * len(datasets) + 0.6), facecolor=SURFACE)
     axes = fig.subplots(len(datasets), 1, sharex=True)
     width = 0.8 / len(aliases)
     x = np.arange(NUM_CLASSES)
@@ -589,7 +589,9 @@ def plot_per_class(res: Mapping, out: Path, metric: str = "iou") -> Path:
                 fontsize=8,
                 color=MUTED,
             )
-    ax.set_xticks(x, SHARED_CLASSES, rotation=30, ha="right", color=INK)
+        # class names under every panel, not only the last (sharex hides them)
+        ax.set_xticks(x, SHARED_CLASSES, rotation=30, ha="right", color=INK)
+        ax.tick_params(axis="x", labelbottom=True)
     _legend(
         np.atleast_1d(axes)[0], loc="upper center", ncols=len(aliases), bbox_to_anchor=(0.5, 1.28)
     )
