@@ -1,0 +1,17 @@
+# M12 final report: training curves of the finished runs (were they still improving at 40k?).
+# Read by scripts/m12_curves.py. Not a training config: it has no run hash and
+# changes no run. Values come from each run's log.jsonl only.
+
+runs: # alias -> run folder and model name (X rows of docs/PLAN.md)
+  X2: {name: 20261105-1307-1acb88f-unet-r34, model: U-Net R34}
+  X3: {name: 20261105-2050-f4e2ffe-deeplabv3p-r50, model: DeepLabV3+ R50}
+  X4: {name: 20261105-2220-ac9a26b-segformer-b2, model: SegFormer-B2 s0}
+  X6: {name: 20261108-1434-adf7cd7-segformer-b2-s1, model: SegFormer-B2 s1}
+  X5: {name: 20261108-1152-2ed6c81-segformer-b2-mt, model: SegFormer-B2 MT s1}
+
+datasets: [lip, cihp, dfmm] # val sets (D4: internal val split, never test)
+
+out: # repo paths, committed (small JSON, Markdown and PNG; no dataset images)
+  json: docs/reports/2026-11-09-M12-curves.json
+  tables: docs/reports/2026-11-09-M12-curves.md
+  figure: docs/reports/figures/M12/val_curves.png
