@@ -6,7 +6,8 @@
 เทรน `segformer_b2_mt` (SegFormer-B2 บวก head ทำนาย attribute รูปทรง 12 ตัวของ DFMM บน encoder ตัวเดียวกัน) ครบ 40,000 iteration บน RTX 4070 ด้วย seed 1
 test mIoU (segmentation): LIP **0.6154**, CIHP **0.6305**, DFMM **0.8394** (eval-v2, `best.pt` step 40000)
 attribute บน DFMM test: macro-F1 เฉลี่ย **0.8036** เทียบกับการทายคลาสที่พบมากสุด 0.3310
-**ยังสรุปไม่ได้ว่า multi-task ช่วยหรือเสีย segmentation** เพราะ run อ้างอิงที่ seed และ GPU เดียวกัน (X6) ยังไม่ได้เทรน
+เทียบกับ X6 (SegFormer-B2 ธรรมดา seed 1 บน GPU เดียวกัน) segmentation mIoU ต่างกันไม่เกิน 0.0009 ในทุก test set จึงไม่เห็นผลเสียจาก attribute head
+ดูตารางเทียบเต็มใน [`2026-11-08-X6-segformer-b2-seed1.md`](2026-11-08-X6-segformer-b2-seed1.md)
 ตัวเลข X4 ที่ใส่ไว้ข้างล่างเป็นแค่ข้อมูลประกอบ (seed 0, GPU คนละรุ่น)
 
 ตัวเลขทุกตัวมาจากไฟล์ใน run folder (`meta.json`, `log.jsonl`, `eval/eval-v2/*/metrics.json`, `eval/attr-v1/dfmm/attr_metrics.json`)
@@ -122,17 +123,15 @@ macro-F1 นับเฉพาะคลาสที่มีภาพจริ�
 - **head ที่ง่าย** คือ `hat`, `glasses`, `outer_cardigan`, `covers_navel` (macro-F1 ตั้งแต่ 0.94) ส่วน **head ที่ยาก** คือ `neckline` (0.4530) และ `waist_acc` (0.6020)
   คลาส `belt`, `standing` และ `v` แทบทายไม่ถูก ส่วนหนึ่งเพราะมีตัวอย่างน้อยหรือแยกจากรูปทรงยาก (ยังไม่ได้ตรวจสาเหตุ)
 - **X5 เทียบกับ X4 ต่างกันไม่เกิน 0.0031 ต่อ test set** (12 คลาสเฉลี่ย −0.0008) แต่เทียบแบบนี้ไม่ได้ตอบคำถามว่า multi-task ช่วยหรือไม่
-  เพราะ X4 ใช้ seed 0 บน RTX 3060 ส่วน X5 ใช้ seed 1 บน RTX 4070 ความต่างจาก seed และ GPU ยังไม่ได้วัด
-  คำตอบที่ถูกต้องต้องรอ X6 (segformer_b2 ธรรมดา seed 1 บน GPU เดียวกัน)
+  เพราะ X4 ใช้ seed 0 บน RTX 3060 ส่วน X5 ใช้ seed 1 บน RTX 4070
+  การเทียบที่ถูกต้องคือกับ X6 (seed และ GPU เดียวกัน): ต่างกัน −0.0002 ถึง −0.0009 ต่อ test set ไม่เห็นผลเสียต่อ segmentation (ดู report ของ X6)
 
 ## สิ่งที่ยังไม่รู้
-- multi-task ช่วยหรือทำให้ segmentation แย่ลงเท่าไร (ต้องใช้ X6)
-- ความแกว่งระหว่าง seed ของ SegFormer-B2 (จะได้ 2 ค่าเมื่อ X6 เสร็จ: seed 0 จาก X4 กับ seed 1 จาก X6 แต่ GPU ต่างกัน)
+- ความแกว่งระหว่าง seed ที่แท้จริงของ SegFormer-B2 บน GPU เดียวกัน (X5 กับ X6 ต่างกันที่ head ไม่ใช่การซ้ำ seed เดียวกัน)
 - ค่า `loss_weight` 0.1 ดีที่สุดหรือไม่ (ยังไม่ได้จูน)
 - เหตุผลที่ `neckline` ทายยาก
 - attribute head ช่วยแก้ error ระหว่าง `outer` กับ `upper` หรือไม่ (ยังไม่ได้วิเคราะห์)
 
 ## งานต่อ
-1. **X6:** เทรน `segformer_b2_s1.yaml` แล้วเทียบ segmentation กับ X5 แบบ seed และ GPU เดียวกัน
-2. เขียนรายงาน E1 เทียบสองงาน: segmentation (X5 กับ X6) และ attribute (X5 กับ majority baseline) แยกตาราง ตามที่ rubric ต้องการ
-3. (ถ้าต้องการ) sweep `loss_weight` {0.05, 0.1, 0.3} ใช้เวลาประมาณ 2.3 ชั่วโมงต่อ run
+1. ~~X6~~ เสร็จแล้ว ดู report ของ X6 (segmentation X5 กับ X6 อยู่ที่นั่น ส่วน attribute X5 กับ majority baseline อยู่ในไฟล์นี้)
+2. (ถ้าต้องการ) sweep `loss_weight` {0.05, 0.1, 0.3} ใช้เวลาประมาณ 2.3 ชั่วโมงต่อ run
