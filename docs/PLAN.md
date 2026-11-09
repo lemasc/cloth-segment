@@ -101,3 +101,4 @@ run folder (D7) and the report are the record; the config hash is in
 | M9 | Record GPU name, memory, capability and driver in `meta.json`; backfill script for old runs | done |
 | M10 | Data concerns from model results (X2–X4): per-raw-class and per-image breakdown of the test sets | done |
 | M11 | LIP multi-person check: are LIP interior background errors other (unlabelled) people? | done |
+| M12 | Final report at cutoff: one reference for results, implementation and limitations; close M7 | doing |
