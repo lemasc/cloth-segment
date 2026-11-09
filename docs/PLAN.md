@@ -59,7 +59,8 @@ Status: `todo` · `doing` · `done` · `blocked` · `dropped`
 | T8 | Model C: SegFormer-B2: code, config, tests (training is X4) | done |
 | T9 | Evaluation: mIoU / per-class IoU / Dice per test set, confusion matrix, qualitative comparisons | done |
 | T10 | Error analysis and limitations | done |
-| T11 | Slides and README (usage, data sources, configuration) | todo |
+| T11 | Presentation slides | todo |
+| T12 | Submission code: a small self-contained package with the core training and evaluation implementation and usage notes (no weights) | todo |
 
 ### Experiments (runs)
 
@@ -101,4 +102,4 @@ run folder (D7) and the report are the record; the config hash is in
 | M9 | Record GPU name, memory, capability and driver in `meta.json`; backfill script for old runs | done |
 | M10 | Data concerns from model results (X2–X4): per-raw-class and per-image breakdown of the test sets | done |
 | M11 | LIP multi-person check: are LIP interior background errors other (unlabelled) people? | done |
-| M12 | Final report at cutoff: one reference for results, implementation and limitations; close M7 | done |
+| M12 | Final report at cutoff: one reference for results, implementation and limitations; close M7; project README; split T11 into slides (T11) and submission code (T12) | done |
