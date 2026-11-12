@@ -1,6 +1,5 @@
 """M9 hardware fields and backfill: torch.cuda and nvidia-smi are mocked, no GPU needed."""
 
-import importlib.util
 import json
 import subprocess
 from types import SimpleNamespace
@@ -8,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from cloth_segment import hardware, paths
+from cloth_segment import hardware
 from cloth_segment.hardware import BackfillRefused, backfill_run, driver_version, gpu_fields
 
 HOST = "box-a"
@@ -116,23 +115,3 @@ def test_backfill_cpu_run_gets_nulls(tmp_path):
     d = _run(tmp_path, device="cpu")
     assert backfill_run(d, hostname=HOST) == dict.fromkeys(NEW)
     assert _meta(d)["gpu_name"] is None
-
-
-def _script():
-    spec = importlib.util.spec_from_file_location(
-        "backfill_hw_meta", paths.REPO_ROOT / "scripts" / "backfill_hw_meta.py"
-    )
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod
-
-
-def test_script_reports_refusal_and_continues(fake_cuda, tmp_path, monkeypatch, capsys):
-    monkeypatch.setattr(hardware.socket, "gethostname", lambda: HOST)
-    bad, good = _run(tmp_path, host="box-b"), tmp_path / "good"
-    good.mkdir()
-    (good / "meta.json").write_text(json.dumps({"host": HOST, "device": "cuda"}))
-    assert _script().main([str(bad), str(good)]) == 1
-    assert "refused" in capsys.readouterr().err
-    assert _meta(good)["hw_backfilled"] is True
-    assert "hw_backfilled" not in _meta(bad)

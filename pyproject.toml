@@ -8,22 +8,15 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "jupyter>=1.1.1",
-    "matplotlib>=3.11.2",
     "numpy>=2.5.4",
     "pandas>=3.1.0",
     "pillow>=13.0.0",
     "pyyaml>=6.0.3",
-    "scipy>=1.18.1",
-    "seaborn>=0.13.2",
     "segmentation-models-pytorch>=0.6.0",
     "torch==2.14.1",
     "torchvision>=0.29.1",
     "transformers<5",
 ]
-
-[project.scripts]
-cloth-segment = "cloth_segment:main"
 
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14.0"]
@@ -51,8 +44,6 @@ explicit = true
 
 [dependency-groups]
 dev = [
-    "marimo>=0.25.2",
-    "nbstripout>=0.9.1",
     "pre-commit>=4.7.0",
     "pytest>=9.2.0",
     "ruff>=0.17.3",
@@ -68,10 +59,6 @@ extend-exclude = ["datasets", "data", "runs"]
 # NPY: numpy pitfalls, SIM: simplifications
 select = ["E", "F", "I", "B", "UP", "NPY", "SIM"]
 ignore = ["B905"]  # zip(strict=) is too noisy for this codebase
-
-[tool.ruff.lint.per-file-ignores]
-# marimo notebooks redefine names across cells by design
-"notebooks/**/*.py" = ["F811", "B018", "E402", "E501"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

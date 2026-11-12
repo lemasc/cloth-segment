@@ -1,4 +1,4 @@
-"""Evaluation protocol and metrics (shared contract, CONTRIBUTING section 4).
+"""Evaluation protocol and metrics.
 
 Entry point: `python -m cloth_segment.evaluate <run> [dataset ...]` (T5).
 Scores the run's `ckpt/best.pt` on the test split of each dataset (default:

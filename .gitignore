@@ -17,5 +17,3 @@ datasets
 
 # Tooling
 .pytest_cache/
-.ipynb_checkpoints/
-__marimo__/

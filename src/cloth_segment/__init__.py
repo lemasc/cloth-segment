@@ -1,2 +1,1 @@
-def main() -> None:
-    print("Hello from cloth-segment!")
+"""Clothing-centric human parsing: training and evaluation core."""

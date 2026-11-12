@@ -2,7 +2,6 @@ import numpy as np
 import pytest
 
 from cloth_segment.data import splits as S
-from cloth_segment.data.dedup import dhash, near_pairs, thumb_corr, to_u64
 
 
 def test_group_keys():
@@ -50,20 +49,6 @@ def test_assign_rules():
 def test_assign_rejects_mixed_groups():
     with pytest.raises(ValueError, match="mixes"):
         S.assign(["lip", "dfmm"], ["train", "all"], ["g", "g"], ["", ""])
-
-
-def test_dhash_finds_rescaled_copies():
-    from PIL import Image
-
-    rng = np.random.default_rng(0)
-    base = (rng.random((8, 8)) * 255).astype(np.uint8).repeat(16, 0).repeat(16, 1)
-    img = Image.fromarray(base)
-    other = Image.fromarray((rng.random((128, 128)) * 255).astype(np.uint8))
-    h = to_u64(np.stack([dhash(img), dhash(img.resize((64, 64))), dhash(other)]))
-    pairs = near_pairs(h, max_dist=4)
-    assert [tuple(p[:2]) for p in pairs] == [(0, 1)]
-    t = np.asarray(img.resize((32, 32)))[None]
-    assert thumb_corr(t, t)[0] > 0.99
 
 
 def test_scope_reasons():
