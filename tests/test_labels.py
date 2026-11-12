@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from cloth_segment.data.labels import (
+from cloth_segment.lib.data.labels import (
     IGNORE,
     MAPPING,
     NUM_CLASSES,
@@ -11,7 +11,7 @@ from cloth_segment.data.labels import (
     convert,
     label_hash,
 )
-from cloth_segment.data.sources import RAW_LABELS
+from cloth_segment.lib.data.sources import RAW_LABELS
 
 
 def name_of(ds, raw_name):

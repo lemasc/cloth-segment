@@ -25,7 +25,7 @@ import torch
 from torchvision.transforms import InterpolationMode
 from torchvision.transforms.v2 import functional as F
 
-from cloth_segment.data.labels import IGNORE
+from cloth_segment.lib.data.labels import IGNORE
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)

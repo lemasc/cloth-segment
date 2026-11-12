@@ -9,9 +9,10 @@ import yaml
 from test_dataset import _write_fixture
 from torch import nn
 
-from cloth_segment import evaluate, models, paths, runs
-from cloth_segment.data.dataset import SegDataset, class_pixel_counts
-from cloth_segment.data.labels import NUM_CLASSES, SHARED_CLASSES
+from cloth_segment import evaluate
+from cloth_segment.lib import models, paths, runs
+from cloth_segment.lib.data.dataset import SegDataset, class_pixel_counts
+from cloth_segment.lib.data.labels import NUM_CLASSES, SHARED_CLASSES
 
 SPECS = [
     ("lip", "test", 120, 70, False),

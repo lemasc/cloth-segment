@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from cloth_segment.data import splits as S
+from cloth_segment.lib.data import splits as S
 
 
 def test_group_keys():

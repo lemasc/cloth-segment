@@ -1,10 +1,18 @@
 import importlib
 
-from cloth_segment import paths
+from cloth_segment.lib import paths
 
 
 def test_modules_import():
-    for mod in ["data", "models", "runs", "train", "evaluate", "paths"]:
+    for mod in [
+        "lib.data",
+        "lib.models",
+        "lib.runs",
+        "lib.paths",
+        "train",
+        "evaluate",
+        "attr_eval",
+    ]:
         importlib.import_module(f"cloth_segment.{mod}")
 
 
@@ -13,7 +21,7 @@ def test_repo_root():
 
 
 def test_raw_labels_are_contiguous():
-    from cloth_segment.data.sources import RAW_LABELS
+    from cloth_segment.lib.data.sources import RAW_LABELS
 
     for name, labels in RAW_LABELS.items():
         assert list(labels) == list(range(len(labels))), name
@@ -21,7 +29,7 @@ def test_raw_labels_are_contiguous():
 
 
 def test_dfmm_outfit_id():
-    from cloth_segment.data.sources import dfmm_outfit_id
+    from cloth_segment.lib.data.sources import dfmm_outfit_id
 
     assert dfmm_outfit_id("MEN-Denim-id_00000080-01_7_additional") == "id_00000080"
     assert dfmm_outfit_id("WOMEN-Graphic_Tees-id_00006246-01_7_additional") == "id_00006246"

@@ -5,9 +5,9 @@ from __future__ import annotations
 import segmentation_models_pytorch as smp
 from torch import nn
 
-from cloth_segment.data.labels import NUM_CLASSES
-from cloth_segment.models import register
-from cloth_segment.models.wrappers import PadToMultiple
+from cloth_segment.lib.data.labels import NUM_CLASSES
+from cloth_segment.lib.models import register
+from cloth_segment.lib.models.wrappers import PadToMultiple
 
 # The encoder downsamples 5 times, so smp.Unet needs H and W divisible by 32.
 OUTPUT_STRIDE = 32

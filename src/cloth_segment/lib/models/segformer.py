@@ -16,9 +16,9 @@ from __future__ import annotations
 import segmentation_models_pytorch as smp
 from torch import nn
 
-from cloth_segment.data.labels import NUM_CLASSES
-from cloth_segment.models import register
-from cloth_segment.models.wrappers import PadToMultiple
+from cloth_segment.lib.data.labels import NUM_CLASSES
+from cloth_segment.lib.models import register
+from cloth_segment.lib.models.wrappers import PadToMultiple
 
 # MiT downsamples 5 times in smp's encoder contract, so smp.Segformer rejects
 # H or W not divisible by 32.

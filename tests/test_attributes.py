@@ -8,10 +8,10 @@ import torch
 import yaml
 from torch import nn
 
-from cloth_segment import attributes, paths, runs
-from cloth_segment.data.dataset import ATTR_NAMES, SegDataset
-from cloth_segment.data.labels import IGNORE, NUM_CLASSES
-from cloth_segment.models import build_model
+from cloth_segment.lib import attributes, paths, runs
+from cloth_segment.lib.data.dataset import ATTR_NAMES, SegDataset
+from cloth_segment.lib.data.labels import IGNORE, NUM_CLASSES
+from cloth_segment.lib.models import build_model
 
 HEADS = {"heads": ["sleeve", "glasses", "hat"], "ignore_values": {"sleeve": ["not_long"]}}
 

@@ -3,8 +3,8 @@ import math
 import pytest
 import torch
 
-from cloth_segment.data.labels import IGNORE, NUM_CLASSES
 from cloth_segment.evaluate import EVAL_VERSION, confusion_matrix, restore_logits, scores
+from cloth_segment.lib.data.labels import IGNORE, NUM_CLASSES
 
 NAMES3 = ("bg", "a", "b")
 

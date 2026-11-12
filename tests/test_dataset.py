@@ -7,7 +7,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader
 
-from cloth_segment.data.dataset import (
+from cloth_segment.lib.data.dataset import (
     ATTR_NAMES,
     ATTR_NUM_CLASSES,
     DATASET_NAMES,
@@ -19,8 +19,8 @@ from cloth_segment.data.dataset import (
     sample_weights,
     select_rows,
 )
-from cloth_segment.data.labels import IGNORE, NUM_CLASSES
-from cloth_segment.data.transforms import (
+from cloth_segment.lib.data.labels import IGNORE, NUM_CLASSES
+from cloth_segment.lib.data.transforms import (
     AugmentConfig,
     eval_transform,
     normalize,
@@ -116,7 +116,7 @@ def test_augment_config_rejects_bad_values():
 def test_base_config_augment_parses():
     import yaml
 
-    from cloth_segment.paths import CONFIGS
+    from cloth_segment.lib.paths import CONFIGS
 
     cfg = yaml.safe_load((CONFIGS / "base.yaml").read_text())
     AugmentConfig.from_dict(cfg["augment"])

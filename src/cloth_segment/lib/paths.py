@@ -7,7 +7,7 @@ absolute paths.
 
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 DATASETS = REPO_ROOT / "datasets"  # raw downloads (read-only)
 DATA = REPO_ROOT / "data"  # converted masks and the split manifest

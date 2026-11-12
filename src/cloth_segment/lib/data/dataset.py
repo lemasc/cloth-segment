@@ -20,10 +20,10 @@ import torch
 from PIL import Image
 from torch.utils.data import Dataset, WeightedRandomSampler
 
-from cloth_segment import paths
-from cloth_segment.data.labels import IGNORE, NUM_CLASSES
-from cloth_segment.data.sources import DFMM_ATTRS, MISSING_ATTR
-from cloth_segment.data.transforms import AugmentConfig, eval_transform, train_transform
+from cloth_segment.lib import paths
+from cloth_segment.lib.data.labels import IGNORE, NUM_CLASSES
+from cloth_segment.lib.data.sources import DFMM_ATTRS, MISSING_ATTR
+from cloth_segment.lib.data.transforms import AugmentConfig, eval_transform, train_transform
 
 DATASET_NAMES: tuple[str, ...] = ("lip", "cihp", "dfmm")
 ATTR_NAMES: tuple[str, ...] = tuple(DFMM_ATTRS)
@@ -178,7 +178,7 @@ def load_split(cfg: dict, split: str, train: bool | None = None) -> SegDataset:
     `train` defaults to `split == "train"`. Fails if the built manifest does
     not match `data.version`, so a run never silently uses other data.
     """
-    from cloth_segment.data.splits import load_manifest
+    from cloth_segment.lib.data.splits import load_manifest
 
     data = cfg["data"]
     version = data["version"]

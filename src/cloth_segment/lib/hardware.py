@@ -14,7 +14,7 @@ from pathlib import Path
 
 import torch
 
-from cloth_segment import runs
+from cloth_segment.lib import runs
 
 GPU_FIELDS: tuple[str, ...] = ("gpu_name", "gpu_total_mib", "gpu_capability", "driver_version")
 _NO_GPU: dict = dict.fromkeys(GPU_FIELDS)

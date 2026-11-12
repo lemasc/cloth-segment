@@ -36,7 +36,7 @@ from pathlib import Path
 
 import yaml
 
-from cloth_segment import paths
+from cloth_segment.lib import paths
 
 SHARED_FIELDS: tuple[str, ...] = (
     "seed",

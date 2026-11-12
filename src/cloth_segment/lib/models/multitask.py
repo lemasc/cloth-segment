@@ -19,10 +19,10 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from cloth_segment.attributes import AttrSpec, parse_spec
-from cloth_segment.models import register
-from cloth_segment.models.segformer import build_segformer_b2
-from cloth_segment.models.wrappers import PadToMultiple
+from cloth_segment.lib.attributes import AttrSpec, parse_spec
+from cloth_segment.lib.models import register
+from cloth_segment.lib.models.segformer import build_segformer_b2
+from cloth_segment.lib.models.wrappers import PadToMultiple
 
 
 class AttrHead(nn.Module):
@@ -61,7 +61,7 @@ class SegAttrModel(PadToMultiple):
 
 @register("segformer_b2_mt")
 def build_segformer_b2_mt(model_cfg: dict) -> nn.Module:
-    """`segformer_b2` keys plus `attr` (see `cloth_segment.attributes`)."""
+    """`segformer_b2` keys plus `attr` (see `cloth_segment.lib.attributes`)."""
     if not model_cfg.get("attr"):
         raise ValueError("segformer_b2_mt needs a model.attr section")
     spec = parse_spec(model_cfg["attr"])

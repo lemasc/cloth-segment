@@ -44,10 +44,11 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.data import DataLoader
 
-from cloth_segment import attr_eval, attributes, evaluate, hardware, runs
-from cloth_segment.data.dataset import SegDataset, collate, load_split, make_sampler
-from cloth_segment.data.labels import IGNORE, SHARED_CLASSES
-from cloth_segment.models import build_model, count_parameters, logits_at
+from cloth_segment import attr_eval, evaluate
+from cloth_segment.lib import attributes, hardware, runs
+from cloth_segment.lib.data.dataset import SegDataset, collate, load_split, make_sampler
+from cloth_segment.lib.data.labels import IGNORE, SHARED_CLASSES
+from cloth_segment.lib.models import build_model, count_parameters, logits_at
 
 LOSSES = ("ce",)
 

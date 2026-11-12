@@ -29,9 +29,9 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from cloth_segment.data.dataset import ATTR_NAMES, ATTR_NUM_CLASSES
-from cloth_segment.data.labels import IGNORE
-from cloth_segment.data.sources import DFMM_ATTRS
+from cloth_segment.lib.data.dataset import ATTR_NAMES, ATTR_NUM_CLASSES
+from cloth_segment.lib.data.labels import IGNORE
+from cloth_segment.lib.data.sources import DFMM_ATTRS
 
 
 @dataclass(frozen=True)

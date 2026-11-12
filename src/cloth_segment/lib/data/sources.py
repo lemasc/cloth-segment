@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from cloth_segment.paths import DATASETS
+from cloth_segment.lib.paths import DATASETS
 
 _LIP_CIHP_COMMON = {
     0: "background",

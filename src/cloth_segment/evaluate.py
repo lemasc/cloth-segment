@@ -49,10 +49,10 @@ import yaml
 from torch import nn
 from torch.utils.data import DataLoader, Dataset
 
-from cloth_segment import paths, runs
-from cloth_segment.data.dataset import DATASET_NAMES, SegDataset, collate, load_split, read_mask
-from cloth_segment.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
-from cloth_segment.models import build_model, logits_at
+from cloth_segment.lib import paths, runs
+from cloth_segment.lib.data.dataset import DATASET_NAMES, SegDataset, collate, load_split, read_mask
+from cloth_segment.lib.data.labels import IGNORE, NUM_CLASSES, SHARED_CLASSES
+from cloth_segment.lib.models import build_model, logits_at
 
 EVAL_VERSION = "eval-v2"
 SELECT_RULES: tuple[str, ...] = ("dataset_mean_miou", "miou")

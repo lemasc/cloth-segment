@@ -35,8 +35,9 @@ import yaml
 from torch import nn
 from torch.utils.data import DataLoader
 
-from cloth_segment import attributes, evaluate, runs
-from cloth_segment.data.dataset import ATTR_NAMES, attribute_targets, select_rows
+from cloth_segment import evaluate
+from cloth_segment.lib import attributes, runs
+from cloth_segment.lib.data.dataset import ATTR_NAMES, attribute_targets, select_rows
 
 ATTR_EVAL_VERSION = "attr-v1"
 MIN_COUNT = 20  # true test items a class needs to count in the headline macro-F1
@@ -62,7 +63,7 @@ def predict_attrs(
 
 def train_targets(cfg: dict, spec: attributes.AttrSpec) -> np.ndarray:
     """(N, heads) targets of the DFMM train split, for the majority baseline."""
-    from cloth_segment.data.splits import load_manifest
+    from cloth_segment.lib.data.splits import load_manifest
 
     version = cfg["data"]["version"]
     df, _ = load_manifest(version.rsplit("-", 1)[0])

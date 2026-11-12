@@ -60,4 +60,4 @@ def count_parameters(model: nn.Module, trainable_only: bool = False) -> int:
 
 
 # Model modules register themselves on import.
-from cloth_segment.models import deeplab, multitask, segformer, unet  # noqa: E402, F401
+from cloth_segment.lib.models import deeplab, multitask, segformer, unet  # noqa: E402, F401

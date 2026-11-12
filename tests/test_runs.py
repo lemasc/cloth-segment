@@ -6,8 +6,8 @@ import stat
 import pytest
 import yaml
 
-from cloth_segment import runs
-from cloth_segment.runs import (
+from cloth_segment.lib import runs
+from cloth_segment.lib.runs import (
     AlreadyFinished,
     GpuBusy,
     config_hash,

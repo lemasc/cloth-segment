@@ -6,10 +6,10 @@ import torch.nn.functional as F
 import yaml
 from torch import nn
 
-from cloth_segment import models, paths
-from cloth_segment.data.labels import NUM_CLASSES
-from cloth_segment.models import build_model, count_parameters, register
-from cloth_segment.models.wrappers import PadToMultiple
+from cloth_segment.lib import models, paths
+from cloth_segment.lib.data.labels import NUM_CLASSES
+from cloth_segment.lib.models import build_model, count_parameters, register
+from cloth_segment.lib.models.wrappers import PadToMultiple
 
 
 class _Strided(nn.Module):
@@ -136,7 +136,7 @@ def test_deeplabv3p_r50_returns_logits_not_probabilities(deeplab):
 
 
 def test_deeplabv3p_r50_architecture(deeplab):
-    from cloth_segment.models.deeplab import OUTPUT_STRIDE
+    from cloth_segment.lib.models.deeplab import OUTPUT_STRIDE
 
     assert isinstance(deeplab, PadToMultiple)
     assert deeplab.multiple == OUTPUT_STRIDE == 16
@@ -184,7 +184,7 @@ def test_segformer_b2_returns_logits_not_probabilities(segformer):
 
 
 def test_segformer_b2_architecture(segformer):
-    from cloth_segment.models.segformer import OUTPUT_STRIDE
+    from cloth_segment.lib.models.segformer import OUTPUT_STRIDE
 
     assert isinstance(segformer, PadToMultiple)
     assert segformer.multiple == OUTPUT_STRIDE == 32

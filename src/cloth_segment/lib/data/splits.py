@@ -26,7 +26,7 @@ import hashlib
 
 import numpy as np
 
-from cloth_segment.data.sources import dfmm_outfit_id
+from cloth_segment.lib.data.sources import dfmm_outfit_id
 
 SPLIT_VERSION = "splits-v2"
 SEED = 0
@@ -192,7 +192,7 @@ def load_manifest(version: str = SPLIT_VERSION):
 
     import pandas as pd
 
-    from cloth_segment.paths import DATA
+    from cloth_segment.lib.paths import DATA
 
     root = DATA / "splits" / version
     if not (root / "DONE").exists():

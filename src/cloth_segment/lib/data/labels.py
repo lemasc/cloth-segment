@@ -16,7 +16,7 @@ import json
 
 import numpy as np
 
-from cloth_segment.data.sources import RAW_LABELS
+from cloth_segment.lib.data.sources import RAW_LABELS
 
 LABEL_VERSION = "labels-v1"
 

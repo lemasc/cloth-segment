@@ -7,8 +7,8 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from cloth_segment import hardware
-from cloth_segment.hardware import BackfillRefused, backfill_run, driver_version, gpu_fields
+from cloth_segment.lib import hardware
+from cloth_segment.lib.hardware import BackfillRefused, backfill_run, driver_version, gpu_fields
 
 HOST = "box-a"
 NEW = {

@@ -10,12 +10,14 @@ one evaluation protocol. No weights, datasets or results are included.
 
 | Path | What it is |
 |---|---|
-| `src/cloth_segment/data/` | Label set and converters (`labels.py`), dataset paths (`sources.py`), split manifest (`splits.py`), `Dataset` and sampler (`dataset.py`), augmentation (`transforms.py`) |
-| `src/cloth_segment/models/` | The model registry and the four models |
-| `src/cloth_segment/train.py` | Training loop, `python -m cloth_segment.train <config>` |
-| `src/cloth_segment/evaluate.py` | Confusion matrix, mIoU / Dice, evaluation CLI |
-| `src/cloth_segment/attributes.py`, `attr_eval.py` | Attribute loss, metrics and evaluation (multi-task model) |
-| `src/cloth_segment/runs.py`, `hardware.py` | Config resolution and hash, run folders, GPU lock, GPU metadata |
+| `src/cloth_segment/train.py` | Training entry point and loop, `python -m cloth_segment.train <config>` |
+| `src/cloth_segment/evaluate.py` | Evaluation entry point, confusion matrix, mIoU / Dice |
+| `src/cloth_segment/attr_eval.py` | Attribute evaluation entry point (multi-task model) |
+| `src/cloth_segment/lib/data/` | Label set and converters (`labels.py`), dataset paths (`sources.py`), split manifest (`splits.py`), `Dataset` and sampler (`dataset.py`), augmentation (`transforms.py`) |
+| `src/cloth_segment/lib/models/` | The model registry and the four models |
+| `src/cloth_segment/lib/attributes.py` | Attribute heads: spec, loss and metrics |
+| `src/cloth_segment/lib/runs.py`, `hardware.py` | Config resolution and hash, run folders, GPU lock, GPU metadata |
+| `src/cloth_segment/lib/paths.py` | Locations of `datasets/`, `data/`, `runs/` and `configs/` |
 | `configs/` | `base.yaml` (shared settings) and one small file per model |
 | `tests/` | Unit tests; they need no datasets and no GPU |
 
