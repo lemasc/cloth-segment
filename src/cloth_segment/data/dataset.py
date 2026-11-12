@@ -1,10 +1,10 @@
-"""PyTorch Dataset over the split manifest: images, masks and DFMM attributes (T4).
+"""PyTorch Dataset over the split manifest: images, masks and DFMM attributes.
 
 Reads original images from `datasets/` and labels-v1 masks from `data/`, via
-the paths in the manifest (T3). Nothing is pre-resized. Every sample carries
-the DFMM attribute targets (D3): NA and missing codes, and all non-DFMM
-images, get IGNORE, so a later multi-task head (E1) can mask its loss with
-`ignore_index`. Which attributes become heads is decided in E1, not here.
+the paths in the manifest. Nothing is pre-resized. Every sample carries the
+DFMM attribute targets: NA and missing codes, and all non-DFMM images, get
+IGNORE, so a multi-task head can mask its loss with `ignore_index`. Which
+attributes become heads is decided by the config, not here.
 
 Config keys used (see configs/base.yaml): `data.version`, `data.datasets`,
 `data.sampling`, `input.size`, `augment.*`.

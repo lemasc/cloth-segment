@@ -1,11 +1,10 @@
-# E1 multi-task: SegFormer-B2 (T8) + DFMM attribute heads on the shared encoder.
-# Overrides model.* and the seed only; the other shared fields (D5) stay in
-# base.yaml. Seed 1, not 0: the reference is segformer_b2_s1.yaml (X6) on the same
-# GPU, because a seed-0 plain run has X4's hash and the D7 cache would skip it.
-# Apart from model.attr, X5 and X6 resolve to the same config. The checkpoint
+# Multi-task: SegFormer-B2 + DFMM attribute heads on the shared encoder.
+# Overrides model.* and the seed only; the other shared fields stay in
+# base.yaml. Seed 1, not 0: the reference is segformer_b2_s1.yaml, because a
+# seed-0 plain run has the same hash as segformer_b2.yaml and the run cache
+# would skip it. Apart from model.attr, the two resolve to the same config. The checkpoint
 # rule (eval.select) stays segmentation-only.
-# Choice of heads and values: E1 proposal (12 shape attributes; DFMM attribute
-# counts per split in the E1 handoff). Texture attributes (fabric_*, pattern_*)
+# Choice of heads and values: 12 shape attributes. Texture attributes (fabric_*, pattern_*)
 # are not heads: very skewed, many values with < 20 test items, outer 80% NA.
 seed: 1
 run:
@@ -19,7 +18,7 @@ model:
     heads: [sleeve, lower_length, socks, hat, glasses, neckwear, wrist, ring,
             waist_acc, neckline, outer_cardigan, covers_navel]
     ignore_values:
-      sleeve: [not_long]             # 6 train, 0 test; ill-defined (T1)
+      sleeve: [not_long]             # 6 train, 0 test; ill-defined
       glasses: [in_hand_or_clothes]  # 16 train, 5 test; not worn
     loss_weight: 0.1   # L = L_seg + 0.1 * L_attr; keeps the attribute term well below seg CE
     hidden: 256

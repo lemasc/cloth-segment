@@ -1,6 +1,6 @@
-# X6: plain SegFormer-B2 (T8) with seed 1, the reference for E1 (X5,
-# segformer_b2_mt.yaml) on the same GPU. Same as segformer_b2.yaml (X4) except
-# the seed; the seed-0 config has X4's hash, so the D7 cache would skip it.
+# Plain SegFormer-B2 with seed 1, the reference for the multi-task run
+# (segformer_b2_mt.yaml). Same as segformer_b2.yaml except the seed; the seed-0
+# config has the same hash as segformer_b2.yaml, so the run cache would skip it.
 # Also a second seed of SegFormer-B2.
 seed: 1
 run:

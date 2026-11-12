@@ -100,7 +100,7 @@ def test_unet_r34_returns_logits_not_probabilities(unet):
 
 def test_unet_r34_config():
     cfg = yaml.safe_load((paths.CONFIGS / "unet_r34.yaml").read_text())
-    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert set(cfg) == {"model"}  # an experiment config overrides model.* only
     assert cfg["model"]["name"] == "unet_r34"
     assert cfg["model"]["pretrained"] is True
     cfg["model"]["pretrained"] = False  # no download in tests
@@ -155,7 +155,7 @@ def test_deeplabv3p_r50_trains_one_step_in_train_mode():
 
 def test_deeplabv3p_r50_config():
     cfg = yaml.safe_load((paths.CONFIGS / "deeplabv3p_r50.yaml").read_text())
-    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert set(cfg) == {"model"}  # an experiment config overrides model.* only
     assert cfg["model"]["name"] == "deeplabv3p_r50"
     assert cfg["model"]["pretrained"] is True
     cfg["model"]["pretrained"] = False  # no download in tests
@@ -246,7 +246,7 @@ def test_segformer_b2_trains_one_step_in_train_mode():
 
 def test_segformer_b2_config():
     cfg = yaml.safe_load((paths.CONFIGS / "segformer_b2.yaml").read_text())
-    assert set(cfg) == {"model"}  # D5: an experiment config overrides model.* only
+    assert set(cfg) == {"model"}  # an experiment config overrides model.* only
     assert cfg["model"]["name"] == "segformer_b2"
     assert cfg["model"]["pretrained"] is True
     assert cfg["model"]["classifier_dropout"] == 0.1

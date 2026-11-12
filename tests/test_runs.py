@@ -69,7 +69,7 @@ def test_load_config_base_itself(base_path):
 )
 def test_undeclared_shared_override_raises(tmp_path, base_path, over):
     exp = _write(tmp_path, "bad.yaml", over)
-    with pytest.raises(ValueError, match="D5"):
+    with pytest.raises(ValueError, match="shared comparison fields"):
         load_config(exp, base_path)
 
 

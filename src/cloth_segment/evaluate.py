@@ -1,12 +1,12 @@
 """Evaluation protocol and metrics.
 
-Entry point: `python -m cloth_segment.evaluate <run> [dataset ...]` (T5).
+Entry point: `python -m cloth_segment.evaluate <run> [dataset ...]`.
 Scores the run's `ckpt/best.pt` on the test split of each dataset (default:
 lip, cihp, dfmm, whatever the run trained on, so cross-dataset tables need no
 extra step) and writes `eval/<EVAL_VERSION>/<dataset>/metrics.json` into the
 run folder. `--split val` scores the internal val split instead and writes
 `eval/<EVAL_VERSION>/val/<dataset>/metrics.json`. An existing file is never
-overwritten: that is the cache. Reports are T9.
+overwritten: that is the cache.
 
 Protocol (eval-v2):
 - Predictions are scored at the **original mask resolution**. Logits from the
@@ -15,7 +15,7 @@ Protocol (eval-v2):
 - One confusion matrix per dataset, summed over all its pixels
   (dataset-level, not a mean of per-image scores). IGNORE pixels are skipped.
   Datasets are never pooled into one matrix: DFMM images have about 11x the
-  pixels of LIP images, so a pooled score is mostly DFMM (M3).
+  pixels of LIP images, so a pooled score is mostly DFMM.
 - Per-class IoU = TP / (TP + FP + FN), Dice = 2TP / (2TP + FP + FN).
 - mIoU and mean Dice average over the classes that have ground-truth pixels in
   that test set, background included. A class with no ground truth is not in
@@ -27,12 +27,8 @@ Protocol (eval-v2):
 - Validation during training scores the internal val split per dataset.
   `best.pt` is the checkpoint with the highest `eval.select` value:
   `dataset_mean_miou` = the mean of the per-dataset val mIoUs (each dataset
-  weighs the same). `miou` (the pooled val mIoU, eval-v1) is kept only so old
-  configs still resolve. A checkpoint is never chosen on a test set (D4).
-
-Changes: eval-v1 -> eval-v2 (M3) adds per-dataset val scores and the
-`dataset_mean_miou` checkpoint rule. Test-set scoring of a given checkpoint is
-unchanged.
+  weighs the same). `miou` (the pooled val mIoU, the older eval-v1 rule) is kept
+  only so old configs still resolve. A checkpoint is never chosen on a test set.
 
 Changing any of this changes reported numbers: bump EVAL_VERSION.
 """
@@ -258,7 +254,7 @@ def predict_confusion(
 
 # ---------------------------------------------------------------- test-set entry point
 
-TEST_SETS: tuple[str, ...] = DATASET_NAMES  # test split of each dataset (D4)
+TEST_SETS: tuple[str, ...] = DATASET_NAMES  # test split of each dataset
 SPLITS: tuple[str, ...] = ("test", "val")  # val: internal val split, for checkpoint analysis
 CHECKPOINT = "best.pt"
 

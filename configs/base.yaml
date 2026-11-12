@@ -1,6 +1,6 @@
 # Shared defaults. Experiment configs override these.
-# Every resolved field is part of the run hash (D7), so keep it explicit.
-# data / input / augment are shared comparison fields (D5): model configs must
+# Every resolved field is part of the run hash, so keep it explicit.
+# data / input / augment are shared comparison fields: model configs must
 # not change them.
 seed: 0
 
@@ -14,7 +14,7 @@ input:
 
 augment:                            # train split only; eval = resize long side + pad
   scale: [0.5, 2.0]                 # long side = size * U(scale), then random size x size window
-  hflip: 0.5                        # safe: left/right classes are merged (T2)
+  hflip: 0.5                        # safe: left/right classes are merged
   brightness: 0.2
   contrast: 0.2
   saturation: 0.2
@@ -23,27 +23,27 @@ augment:                            # train split only; eval = resize long side 
 model:
   name: null           # unet_r34 | deeplabv3p_r50 | segformer_b2
 
-train:                 # shared comparison fields (D5): same for every model
-  batch_size: 8        # largest that fits SegFormer-B2 at 512 on the 12 GB GPU (T5 probe)
+train:                 # shared comparison fields: same for every model
+  batch_size: 8        # largest that fits SegFormer-B2 at 512 on a 12 GB GPU
   iters: 40000         # optimizer steps, about 5 epochs of the 62,500 train images
-  amp: bf16            # bf16 | fp16 | none; the T5 probe measured batch 8 with AMP on
+  amp: bf16            # bf16 | fp16 | none; batch 8 was measured with AMP on
 
-optim:                 # AdamW for every model (D5); lr may be set per model (not shared)
+optim:                 # AdamW for every model; lr may be set per model (not shared)
   name: adamw
-  lr: 1.0e-4           # untuned default (the probe used it); model configs may override
+  lr: 1.0e-4           # untuned default; model configs may override
   weight_decay: 0.01
   betas: [0.9, 0.999]
   warmup_iters: 1500   # linear warmup from lr/warmup_iters to lr
   poly_power: 1.0      # then lr * (1 - progress) ** power down to 0 at train.iters
 
 loss:
-  name: ce             # cross-entropy, IGNORE pixels skipped; E3 compares ce + dice
+  name: ce             # cross-entropy, IGNORE pixels skipped
 
-eval:                  # validation during training (internal val split, never test, D4)
+eval:                  # validation during training (internal val split, never test)
   split: val
   every: 4000          # iterations; also always at the last iteration
-  select: dataset_mean_miou  # best.pt = highest mean of per-dataset val mIoU (eval-v2, M3)
+  select: dataset_mean_miou  # best.pt = highest mean of per-dataset val mIoU
 
 run:                   # not hashed: names and runtime settings that do not change results
-  num_workers: 8       # T4 loader: ~256 img/s at 8 workers
+  num_workers: 8       # data loader workers
   log_every: 50        # iterations between train-loss log lines

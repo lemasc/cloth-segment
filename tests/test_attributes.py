@@ -1,4 +1,4 @@
-"""E1 attribute heads: spec, targets, loss, metrics, model and multi-task fit. No data, no GPU."""
+"""Attribute heads: spec, targets, loss, metrics, model and multi-task fit. No data, no GPU."""
 
 import json
 
@@ -135,8 +135,8 @@ def test_mt_needs_attr_section():
         build_model({"name": "segformer_b2_mt", "pretrained": False})
 
 
-def test_x5_and_x6_configs_differ_only_in_the_model():
-    """E1 (X5) and its reference (X6): seed 1 both, same everything but the model."""
+def test_multitask_and_reference_configs_differ_only_in_the_model():
+    """The multi-task config and its plain reference: seed 1 both, same but the model."""
     base = yaml.safe_load((paths.CONFIGS / "base.yaml").read_text())
     mt = runs.load_config(paths.CONFIGS / "segformer_b2_mt.yaml")
     plain = runs.load_config(paths.CONFIGS / "segformer_b2_s1.yaml")
@@ -149,12 +149,12 @@ def test_x5_and_x6_configs_differ_only_in_the_model():
         "name": "segformer_b2_mt"
     }
     assert len(attributes.parse_spec(mt["model"]["attr"]).heads) == 12
-    x4 = runs.load_config(paths.CONFIGS / "segformer_b2.yaml")
-    assert runs.config_hash(plain) != runs.config_hash(x4)  # the D7 cache does not skip X6
+    seed0 = runs.load_config(paths.CONFIGS / "segformer_b2.yaml")
+    assert runs.config_hash(plain) != runs.config_hash(seed0)  # the run cache does not skip it
 
 
 def test_existing_run_hashes_unchanged():
-    """Adding E1 must not change the cache key of finished runs (D7)."""
+    """Adding the multi-task model must not change the cache key of existing configs."""
     assert runs.config_hash(runs.load_config(paths.CONFIGS / "segformer_b2.yaml")) == "8e9039649376"
     assert runs.config_hash(runs.load_config(paths.CONFIGS / "unet_r34.yaml")) == "d4f03d515ed0"
 

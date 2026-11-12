@@ -1,4 +1,4 @@
-"""Record which GPU a run used (M9), so runs from different machines can be told apart.
+"""Record which GPU a run used, so runs from different machines can be told apart.
 
 - `gpu_fields` gives the four `meta.json` fields at run start. All are None off cuda.
 - `backfill_run` adds the same fields to an older run, only where they are missing, and

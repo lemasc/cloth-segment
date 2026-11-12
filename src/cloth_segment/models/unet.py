@@ -1,4 +1,4 @@
-"""Model A (T6): U-Net with a ResNet-34 encoder, ImageNet-pretrained."""
+"""U-Net with a ResNet-34 encoder, ImageNet-pretrained."""
 
 from __future__ import annotations
 

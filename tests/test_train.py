@@ -1,7 +1,6 @@
-"""T5 training/eval pieces: LR schedule, eval steps, loss, model registry, val scoring.
+"""Training/eval pieces: LR schedule, eval steps, loss, model registry, val scoring.
 
-No real data and no GPU; the training loop itself is not tested end to end
-(docs/conventions.md).
+No real data and no GPU; the training loop itself is not tested end to end.
 """
 
 import json
@@ -72,7 +71,7 @@ def test_build_optimizer_from_base_config():
         build_optimizer(nn.Linear(2, 2), cfg["optim"] | {"name": "sgd"})
 
 
-# --- shared fields (D5) -------------------------------------------------------------
+# --- shared fields -------------------------------------------------------------
 
 
 def _exp(tmp_path, data):

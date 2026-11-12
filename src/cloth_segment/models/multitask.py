@@ -1,7 +1,7 @@
-"""E1: SegFormer-B2 with DFMM attribute heads on the shared encoder (multi-task).
+"""SegFormer-B2 with DFMM attribute heads on the shared encoder (multi-task).
 
-`segformer_b2_mt` is the T8 SegFormer-B2 (same builder, so with the same seed
-the segmentation part starts from the same weights as X4, M4) plus a small
+`segformer_b2_mt` is the plain SegFormer-B2 (same builder, so with the same seed
+the segmentation part starts from the same weights) plus a small
 attribute head built after it:
 
     encoder stage 4 (512 ch, stride 32) -> global avg + max pool (1024)
@@ -65,5 +65,5 @@ def build_segformer_b2_mt(model_cfg: dict) -> nn.Module:
     if not model_cfg.get("attr"):
         raise ValueError("segformer_b2_mt needs a model.attr section")
     spec = parse_spec(model_cfg["attr"])
-    seg = build_segformer_b2(model_cfg)  # first: same RNG use as segformer_b2 (M4)
+    seg = build_segformer_b2(model_cfg)  # first: same RNG use as segformer_b2
     return SegAttrModel(seg, spec)

@@ -1,4 +1,4 @@
-"""T4 loader and transforms on tiny synthetic files; no real data, no GPU."""
+"""Loader and transforms on tiny synthetic files; no real data, no GPU."""
 
 import numpy as np
 import pandas as pd

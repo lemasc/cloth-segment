@@ -1,12 +1,10 @@
-"""Shared label set and per-dataset raw -> shared mapping (T2).
+"""Shared label set and per-dataset raw -> shared mapping.
 
 Every raw ID of every dataset is mapped explicitly, either to a shared class or
 to IGNORE. Conversion fails on any value that is not in the raw label set, so
 a wrong source folder or a corrupt mask cannot silently become background.
 
 Left/right parts are merged, so a horizontal flip needs no label swap.
-Rationale for each choice: docs/handoffs/2026-11-03-kickoff.md (draft) and
-docs/handoffs/2026-11-03-T1-lemasc.md (T1 changes).
 
 Changing anything here changes the processed data: bump LABEL_VERSION.
 """
@@ -90,11 +88,11 @@ MAPPING_BY_NAME: dict[str, dict[str, str]] = {
         "skirt": "skirt",
         "dress": "dress",
         "pants": "pants",
-        "leggings": "footwear",  # T1: knee/thigh-high socks and tights, like LIP/CIHP socks
+        "leggings": "footwear",  # knee/thigh-high socks and tights, like LIP/CIHP socks
         "headwear": "headwear",
         "eyeglass": "accessory",
         "neckwear": "accessory",
-        "belt": IGNORE_NAME,  # T1: no belt class in LIP/CIHP (labelled as garment there)
+        "belt": IGNORE_NAME,  # no belt class in LIP/CIHP (labelled as garment there)
         "footwear": "footwear",
         "bag": IGNORE_NAME,  # no bag class in LIP/CIHP (labelled as background there)
         "hair": "hair",

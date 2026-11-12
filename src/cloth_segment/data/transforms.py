@@ -1,7 +1,7 @@
-"""Image/mask transforms for training and evaluation (T4).
+"""Image/mask transforms for training and evaluation.
 
-Same transforms for every model (D5); parameters come from config, so they are
-part of the run hash (D8 tier 3). Masks are only ever resized with nearest
+Same transforms for every model; parameters come from config, so they are
+part of the run hash. Masks are only ever resized with nearest
 neighbour, and every padded mask pixel is IGNORE.
 
 - Train: scale the long side to `size * s` with `s ~ U(scale)`, horizontal
@@ -12,7 +12,7 @@ neighbour, and every padded mask pixel is IGNORE.
   can be cropped and resized back to the original mask (evaluation runs at
   the original resolution).
 
-Left/right classes are merged in the label set (T2), so a flip needs no label
+Left/right classes are merged in the label set, so a flip needs no label
 swap. Images are normalised with ImageNet statistics for every model, by us
 rather than by a library's image processor.
 """

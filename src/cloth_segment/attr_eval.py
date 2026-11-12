@@ -1,4 +1,4 @@
-"""Attribute evaluation for multi-task runs (E1). Not part of the frozen `evaluate.py`.
+"""Attribute evaluation for multi-task runs. Separate from `evaluate.py`, which scores segmentation.
 
 Entry point: `python -m cloth_segment.attr_eval <run> [--wait]`. Scores the
 run's `ckpt/best.pt` attribute heads on the DFMM test split and writes

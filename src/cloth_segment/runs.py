@@ -1,9 +1,10 @@
-"""Run management (D7): config loading, hashing, run folders, cache check, GPU lock.
+"""Run management: config loading, hashing, run folders, cache check, GPU lock.
 
 - Config = `configs/base.yaml` deep-merged with one experiment YAML. The
-  experiment may not change shared comparison fields (D5) unless it lists
-  them under `run.overrides_shared`, by the name in `SHARED_FIELDS` (e.g. E2
-  changes `data.datasets`, so it lists `data`: the whole section is one field).
+  experiment may not change shared comparison fields unless it lists them
+  under `run.overrides_shared`, by the name in `SHARED_FIELDS` (e.g. an
+  experiment that changes `data.datasets` lists `data`: the whole section is
+  one field).
   `optim.lr` is deliberately not shared: each model may set its own.
 - `config_hash` = sha256 of the resolved config as canonical JSON, without the
   `run` section (slug, notes, workers, logging: names and runtime settings
@@ -89,7 +90,7 @@ def shared_overrides(base: dict, resolved: dict) -> list[str]:
 
 
 def load_config(path: Path, base_path: Path | None = None) -> dict:
-    """Resolve an experiment YAML on top of base.yaml and enforce D5.
+    """Resolve an experiment YAML on top of base.yaml and enforce the shared fields.
 
     Raises if a shared field changes without being declared in
     `run.overrides_shared`, or if a declared one does not actually change.
@@ -105,7 +106,7 @@ def load_config(path: Path, base_path: Path | None = None) -> dict:
     undeclared = [f for f in changed if f not in declared]
     if undeclared:
         raise ValueError(
-            f"{path}: changes shared comparison fields {undeclared} (D5). "
+            f"{path}: changes shared comparison fields {undeclared}. "
             "List them in run.overrides_shared if this experiment really needs it."
         )
     unused = [f for f in declared if f not in changed]
@@ -195,7 +196,7 @@ def create_run(
 ) -> Path:
     """Make the run folder with `config.yaml` and `meta.json` (status running).
 
-    Raises AlreadyFinished on a cache hit (D7). Never reuses an existing folder.
+    Raises AlreadyFinished on a cache hit. Never reuses an existing folder.
     """
     h = config_hash(cfg)
     if (hit := find_finished(h, runs_dir)) is not None:

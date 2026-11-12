@@ -1,6 +1,6 @@
-# T7 Model B: DeepLabV3+ with a ResNet-50 encoder (ImageNet-pretrained, D5).
+# DeepLabV3+ with a ResNet-50 encoder (ImageNet-pretrained).
 # Overrides only model.*; shared fields stay in base.yaml.
-# lr stays at the base 1e-4, the same untuned value as U-Net (X2).
+# lr stays at the base 1e-4, the same untuned value as U-Net.
 model:
   name: deeplabv3p_r50
   pretrained: true

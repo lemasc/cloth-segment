@@ -1,4 +1,4 @@
-"""T5 test-set entry point: run lookup, metrics.json content, no overwrite. CPU only."""
+"""Test-set entry point: run lookup, metrics.json content, no overwrite. CPU only."""
 
 import datetime as dt
 import json

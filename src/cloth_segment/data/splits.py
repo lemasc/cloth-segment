@@ -1,8 +1,8 @@
-"""Leakage-free split assignment (T3).
+"""Leakage-free split assignment.
 
-Rules (rationale and evidence: docs/handoffs/2026-11-03-T3-lemasc.md):
+Rules:
 
-1. Test = official LIP val + official CIHP val (D4), plus a DFMM test split.
+1. Test = official LIP val + official CIHP val, plus a DFMM test split.
 2. Group key: LIP `<photo>_<person>` -> photo (crops of one photo stay
    together); CIHP -> image id; DFMM -> outfit id (all views of one outfit).
 3. Groups joined by a near-duplicate pair are merged (union-find), within and
@@ -12,12 +12,12 @@ Rules (rationale and evidence: docs/handoffs/2026-11-03-T3-lemasc.md):
    never changed by this rule.
 5. Other groups get a split from a seeded hash of the group key:
    LIP/CIHP train pool -> train / val; DFMM -> train / val / test.
-6. Out-of-scope images are excluded everywhere, test included (D4), before
+6. Out-of-scope images are excluded everywhere, test included, before
    rules 3-5 see them: a mask with only background (`empty_mask`, an
    annotation failure), a short side under `MIN_SIDE` px (`too_small`), or a
    long/short side ratio above `MAX_ASPECT` (`extreme_aspect`). They take no
    part in duplicate groups, so an excluded image never causes another image
-   to be dropped as a leak. Rationale and counts: docs/handoffs/2026-11-04-M2-lemasc.md.
+   to be dropped as a leak.
 """
 
 from __future__ import annotations
@@ -196,7 +196,7 @@ def load_manifest(version: str = SPLIT_VERSION):
 
     root = DATA / "splits" / version
     if not (root / "DONE").exists():
-        raise FileNotFoundError(f"{root} is not built; run scripts/build_splits.py")
+        raise FileNotFoundError(f"{root} is not built; build the split manifest first")
     meta = json.loads((root / "meta.json").read_text())
     df = pd.read_csv(
         root / "manifest.csv", keep_default_na=False, dtype={"id": str, "exclude_reason": str}

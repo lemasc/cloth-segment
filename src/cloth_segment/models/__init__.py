@@ -1,8 +1,9 @@
 """Model builders: config (name + params) -> nn.Module.
 
-Tasks T6 (U-Net R34), T7 (DeepLabV3+ R50), T8 (SegFormer-B2); E1 adds attribute heads.
+Models: U-Net R34, DeepLabV3+ R50, SegFormer-B2, and a multi-task SegFormer-B2
+with attribute heads.
 
-Contract used by `train.py` and `evaluate.py` (T5): a built model maps a
+Contract used by `train.py` and `evaluate.py`: a built model maps a
 normalised image batch (B, 3, S, S) to a plain logits tensor (B, NUM_CLASSES,
 h, w). `h, w` may be smaller than `S` (SegFormer predicts at 1/4); callers
 upsample with `logits_at`. A builder takes the `model` config section and
@@ -58,6 +59,5 @@ def count_parameters(model: nn.Module, trainable_only: bool = False) -> int:
     return sum(p.numel() for p in model.parameters() if p.requires_grad or not trainable_only)
 
 
-# Model modules register themselves on import (T6: unet, T7: deeplab, T8: segformer,
-# E1: multitask).
+# Model modules register themselves on import.
 from cloth_segment.models import deeplab, multitask, segformer, unet  # noqa: E402, F401

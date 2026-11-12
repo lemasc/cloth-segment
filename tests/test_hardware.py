@@ -1,4 +1,4 @@
-"""M9 hardware fields and backfill: torch.cuda and nvidia-smi are mocked, no GPU needed."""
+"""Hardware fields and backfill: torch.cuda and nvidia-smi are mocked, no GPU needed."""
 
 import json
 import subprocess

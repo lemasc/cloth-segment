@@ -1,4 +1,4 @@
-"""Model B (T7): DeepLabV3+ with a ResNet-50 encoder, ImageNet-pretrained."""
+"""DeepLabV3+ with a ResNet-50 encoder, ImageNet-pretrained."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from cloth_segment.data.labels import NUM_CLASSES
 from cloth_segment.models import register
 from cloth_segment.models.wrappers import PadToMultiple
 
-# smp's default output stride (the T5 GPU probe measured batch 8 with it).
+# smp's default output stride.
 # smp.DeepLabV3Plus rejects H or W not divisible by it, so PadToMultiple is needed.
 OUTPUT_STRIDE = 16
 

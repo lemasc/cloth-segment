@@ -1,12 +1,12 @@
-"""Training entry point: `python -m cloth_segment.train <config.yaml>`. Task T5.
+"""Training entry point: `python -m cloth_segment.train <config.yaml>`.
 
-One loop for every model (D5). Flow:
+One loop for every model. Flow:
 
-1. Resolve the config (`runs.load_config`, enforces D5). If a finished clean
-   run with the same hash exists, stop (D7 cache).
+1. Resolve the config (`runs.load_config`, enforces the shared fields). If a
+   finished clean run with the same hash exists, stop (cache).
 2. On a GPU, take the shared GPU lock, then create the run folder.
    The model is built right after `torch.manual_seed(seed)`, so its randomly
-   initialised layers (decoder, head) are the same on every run (M4).
+   initialised layers (decoder, head) are the same on every run.
 3. Train for `train.iters` optimizer steps: AdamW, linear warmup then poly
    decay, cross-entropy with IGNORE skipped, autocast per `train.amp`.
 4. Every `eval.every` steps and at the last step, score the internal val split
@@ -15,16 +15,16 @@ One loop for every model (D5). Flow:
    default the mean of the per-dataset val mIoUs).
 5. Log to `log.jsonl` (one JSON object per line); write the result to
    `meta.json` (`finished` or `failed`). `meta.json` also records the
-   parameter count (`params`, `trainable_params`), reported with results (D5).
+   parameter count (`params`, `trainable_params`), reported with results.
 
-Multi-task models (E1, `forward_multi`): the loss is
+Multi-task models (`forward_multi`): the loss is
 `L_seg + model.attr.loss_weight * L_attr` (`attributes.attr_loss`), and each
 check also logs attribute macro-F1 on the DFMM val split. The checkpoint rule
 (`eval.select`) stays segmentation-only, so `best.pt` is chosen as for the
 other models. Segmentation-only models train exactly as before.
 
 On CUDA, PyTorch is capped to the GPU memory free at start, so a batch that
-does not fit raises OOM instead of spilling into system RAM (WSL, T5 probe).
+does not fit raises OOM instead of spilling into system RAM (seen on WSL).
 """
 
 from __future__ import annotations
@@ -102,7 +102,7 @@ def train_loader(dataset: SegDataset, cfg: dict) -> DataLoader:
         generator=gen,
         num_workers=cfg["run"]["num_workers"],
         collate_fn=collate,
-        drop_last=True,  # DeepLabV3+ cannot train on a batch of 1 (T5 probe)
+        drop_last=True,  # DeepLabV3+ cannot train on a batch of 1
         pin_memory=torch.cuda.is_available(),
         persistent_workers=cfg["run"]["num_workers"] > 0,
     )

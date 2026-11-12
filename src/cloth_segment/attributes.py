@@ -1,6 +1,6 @@
-"""DFMM attribute heads for multi-task training (E1): spec, targets, loss and metrics.
+"""DFMM attribute heads for multi-task training: spec, targets, loss and metrics.
 
-The loader returns all 18 DFMM attributes per image (T4, D3), with NA, missing
+The loader returns all 18 DFMM attributes per image, with NA, missing
 and non-DFMM images set to IGNORE. `model.attr` in the experiment config picks
 the heads and the extra values to ignore:
 
@@ -16,8 +16,8 @@ Each head keeps every value of its attribute as a logit (NA dropped), so the
 class index is the raw DFMM code. Ignored values never get a gradient and are
 left out of the metrics.
 
-The settings live under `model`, not `loss` or `eval`: those are shared
-comparison fields (D5) and stay the same as the segmentation-only runs.
+The settings live under `model`, not `loss` or `eval`: those are shared by
+every model and stay the same as the segmentation-only runs.
 """
 
 from __future__ import annotations

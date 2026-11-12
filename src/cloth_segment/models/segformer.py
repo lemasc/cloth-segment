@@ -1,4 +1,4 @@
-"""Model C (T8): SegFormer-B2 (MiT-B2 encoder + all-MLP decoder), ImageNet-pretrained.
+"""SegFormer-B2 (MiT-B2 encoder + all-MLP decoder), ImageNet-pretrained.
 
 Built with smp and set to match the original SegFormer B2 (NVlabs/SegFormer,
 `local_configs/segformer/B2`) where smp's defaults differ:

@@ -1,7 +1,7 @@
 """Raw dataset sources: where image/mask pairs live and what raw label IDs mean.
 
 This module only describes the datasets as downloaded. Mapping to the shared
-label set is T2 (`labels.py`), splitting is T3.
+label set is in `labels.py`, splitting in `splits.py`.
 """
 
 from __future__ import annotations
@@ -66,7 +66,7 @@ RAW_LABELS: dict[str, dict[int, str]] = {
 RAW_LABELS = {k: dict(sorted(v.items())) for k, v in RAW_LABELS.items()}
 
 # Splits with labels. LIP/CIHP official test sets have no masks; DFMM has no
-# official split (one pool, split by outfit in T3).
+# official split (one pool, split by outfit in `splits.py`).
 SPLITS: dict[str, tuple[str, ...]] = {
     "lip": ("train", "val"),
     "cihp": ("train", "val"),
