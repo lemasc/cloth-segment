@@ -34,8 +34,6 @@ multi-task ที่ทำนาย attribute ของเสื้อผ้า�
 
 ```bash
 uv sync
-uv run ruff check . && uv run ruff format --check .
-uv run pytest
 ```
 
 ## โครงสร้างข้อมูล
